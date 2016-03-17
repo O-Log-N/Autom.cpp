@@ -1,0 +1,3 @@
+[submodule "3rdparty/cppformat"]
+	path = 3rdparty/cppformat
+	url = https://github.com/cppformat/cppformat.git
