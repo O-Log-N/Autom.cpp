@@ -46,16 +46,16 @@ Naming conventions examples:
 1. **MUST NOT** have any duplicate declarations for the same entity. In particular, function declarations in .cpp files are **PROHIBITED** for non-static functions
 2. Each include **MUST** have "include guard" consisting of #ifndef FILE_NAME_INCLUDED - #define FILE_NAME_INCLUDED
     - #pragma once SHOULD NOT be used as non-standard
-3. Rules for #includes are different for /include/ and /src/ folders:
+3. Rules for #includes are different for /include/ and /libsrc/ folders:
   
   3.1 For /include/ folder:
     - **IMPORTANT**: We **SHOULD** minimize number of standard #includes within our /include/ folder
       - i.e. Each file in /include/ **SHOULD** use only the absolute minimum of #includes required for them to compile
     - ALL C++ standard includes **MUST** be included as `<include_file_name.h>`
         
-  3.2 For /src/ folder, rules are different:
-    - ALL C++ standard includes SHOULD be within /src/autom_cpp_include.h, and **MUST** be included as `<include_file_name.h>`
-    - The very first #include file for ALL the files in /src/ SHOULD be `#include "../autom_cpp_include.h"` (with different number of '../' as necessary) 
+  3.2 For /libsrc/ folder, rules are different:
+    - ALL C++ standard includes SHOULD be within /libsrc/autom_cpp_include.h, and **MUST** be included as `<include_file_name.h>`
+    - The very first #include file for ALL the files in /libsrc/ SHOULD be `#include "../autom_cpp_include.h"` (with different number of '../' as necessary) 
 4. *this space is intentionally left blank*
 5. Our own includes **MUST** be included via "include_file_name.h" (with a relative path if necessary(!))
 
