@@ -2,7 +2,7 @@
 #include "../3rdparty/cppformat/cppformat/format.h"
 
 #include "../include/aasert.h"
-#include "../include/atrace.h"
+#include "../include/aconsole.h"
 
 int main()
 {
