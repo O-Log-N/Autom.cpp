@@ -4,6 +4,8 @@
 #include "../include/aasert.h"
 #include "../include/aconsole.h"
 
+using namespace std;
+
 int main()
 {
     try {
