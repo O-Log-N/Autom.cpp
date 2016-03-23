@@ -155,7 +155,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\include\aasert.h" />
-    <ClInclude Include="..\include\atrace.h" />
+    <ClInclude Include="..\include\aconsole.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

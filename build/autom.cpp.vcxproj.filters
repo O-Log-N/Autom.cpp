@@ -32,7 +32,7 @@
     <ClInclude Include="..\include\aasert.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\include\atrace.h">
+    <ClInclude Include="..\include\aconsole.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
