@@ -17,26 +17,49 @@ Copyright (C) 2016 OLogN Technologies AG
 
 #include "../3rdparty/cppformat/cppformat/format.h"
 
-#ifndef ATRACELEVEL
-#define ATRACELEVEL 2
+#ifndef ATRACE_LVL_MAX
+#define ATRACE_LVL_MAX 4 // Compile time max trace level
 #endif
-static_assert( ATRACELEVEL >= 0, "ATRACELEVEL >= 0" );
-static_assert( ATRACELEVEL <= 4, "ATRACELEVEL <= 4" );
+static_assert( ATRACE_LVL_MAX >= 0, "ATRACE_LVL_MAX >= 0" );
+static_assert( ATRACE_LVL_MAX <= 4, "ATRACE_LVL_MAX <= 4" );
+
+#ifndef ATRACE_SOFT_DEFAULT
+#define ATRACE_SOFT_DEFAULT 2 // Default value for runtime trace level
+#endif
+static_assert( ATRACE_SOFT_DEFAULT >= 0, "ATRACE_SOFT_DEFAULT >= 0" );
+static_assert( ATRACE_SOFT_DEFAULT <= ATRACE_LVL_MAX, "ATRACE_SOFT_DEFAULT <= ATRACE_LVL_MAX" );
 
 namespace autom
 {
 	class Console
 	{
+		int softTraceLevel;
+
 	public:
+		Console()
+		{
+			softTraceLevel = ATRACE_SOFT_DEFAULT;
+		}
+
+		int traceLevel() const { return softTraceLevel; }
 
 		void trace0() {}
 		void trace1() {}
 		void trace2() {}
 		void trace3() {}
-		void trace4() {}
+		template< typename... ARGS >
+		void trace4( const char* formatStr, const ARGS& ... args )
+		{
+			if( traceLevel() >= 4 )
+				info( formatStr, args... );
+		}
 
 		template< typename... ARGS >
-		void info( const char* formatStr, const ARGS& ... args ) { fmt::print( formatStr, args... ); }
+		void info( const char* formatStr, const ARGS& ... args )
+		{
+			fmt::print( formatStr, args... );
+			fmt::print( "\n" );
+		}
 		void notice() {}
 		void warn() {}
 		void error() {}
@@ -50,23 +73,86 @@ namespace autom
 	class ConsoleWrapper
 	{
 		Console* console;
+		int lostMessages;
 
 	public:
-		void assign( Console* console_ ) { console = console_; }
-		template< typename... ARGS >
-		void log( const char* formatStr, const ARGS& ... args ) { console->info( formatStr, args... ); }
-		static int traceLevel() { return ATRACELEVEL; }
+		void assign( Console* console_ )
+		{
+			console = console_;
+			if( lostMessages )
+			{
+				console->trace4( "Lost messages: {0}", lostMessages );
+				lostMessages = 0;
+			}
+		}
 
-		ConsoleWrapper() { console = nullptr; };
+		int traceLevel() const
+		{
+			return console ? console->traceLevel() : ATRACE_LVL_MAX;
+		}
+
+		template< typename... ARGS >
+		void log( const char* formatStr, const ARGS& ... args )
+		{
+			if( console )
+				console->info( formatStr, args... );
+			else
+				++lostMessages;
+		}
+		
+		ConsoleWrapper()
+		{
+			console = nullptr;
+			lostMessages = 0;
+		};
 		ConsoleWrapper( const ConsoleWrapper& ) = delete;
 		ConsoleWrapper& operator =( const ConsoleWrapper& ) = delete;
 	};
 }
 
+#if ( ATRACE_LVL_MAX >= 4 )
+#define AATRACE4(...)\
+do {\
+	if(console.traceLevel()>=4)\
+		console.log(__VA_ARGS__);\
+	} while(0)
+#else
+#define AATRACE4(...)
+#endif
+
+#if ( ATRACE_LVL_MAX >= 3 )
 #define AATRACE3(...)\
 do {\
 	if(console.traceLevel()>=3)\
 		console.log(__VA_ARGS__);\
+	} while(0)
+#else
+#define AATRACE3(...)
+#endif
+
+#if ( ATRACE_LVL_MAX >= 2 )
+#define AATRACE2(...)\
+do {\
+	if(console.traceLevel()>=2)\
+		console.log(__VA_ARGS__);\
+	} while(0)
+#else
+#define AATRACE2(...)
+#endif
+
+#if ( ATRACE_LVL_MAX >= 1 )
+#define AATRACE1(...)\
+do {\
+	if(console.traceLevel()>=1)\
+		console.log(__VA_ARGS__);\
+	} while(0)
+#else
+#define AATRACE1(...)
+#endif
+
+#define AATRACE0(...)\
+do {\
+	console.log(__VA_ARGS__);\
 	} while(0)
 
 #endif
