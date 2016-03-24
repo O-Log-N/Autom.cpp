@@ -1,21 +1,20 @@
 /*******************************************************************************
 Copyright (C) 2016 OLogN Technologies AG
-    This program is free software; you can redistribute it and/or modify
-    it under the terms of the GNU General Public License version 2 as
-    published by the Free Software Foundation.
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-    You should have received a copy of the GNU General Public License along
-    with this program; if not, write to the Free Software Foundation, Inc.,
-    51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+	This program is free software; you can redistribute it and/or modify
+	it under the terms of the GNU General Public License version 2 as
+	published by the Free Software Foundation.
+	This program is distributed in the hope that it will be useful,
+	but WITHOUT ANY WARRANTY; without even the implied warranty of
+	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+	GNU General Public License for more details.
+	You should have received a copy of the GNU General Public License along
+	with this program; if not, write to the Free Software Foundation, Inc.,
+	51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 *******************************************************************************/
 
 #ifndef ACONSOLE_H_INCLUDED
 #define ACONSOLE_H_INCLUDED
 
-#include <memory>
 #include "../3rdparty/cppformat/cppformat/format.h"
 
 #ifndef ATRACELEVEL
@@ -50,14 +49,10 @@ namespace autom
 
 	class ConsoleWrapper
 	{
-		std::unique_ptr< Console > console;
+		Console* console;
 
 	public:
-		void assign( std::unique_ptr< Console > console_ )
-		{
-			// TODO: AASSERT0( ! console );
-			console = std::move( console_ );
-		}
+		void assign( Console* console_ ) { console = console_; }
 		template< typename... ARGS >
 		void log( const char* formatStr, const ARGS& ... args ) { console->info( formatStr, args... ); }
 		static int traceLevel() { return ATRACELEVEL; }

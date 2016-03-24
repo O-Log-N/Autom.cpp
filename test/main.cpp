@@ -1,6 +1,6 @@
 #include <exception>
 
-#include "../include/aasert.h"
+#include "../include/aassert.h"
 #include "../include/aconsole.h"
 
 using namespace std;
@@ -17,9 +17,9 @@ int main()
 {
 	try
 	{
-		console.assign( unique_ptr< Console >( new Console ) );
+		console.assign( new Console );
 		console.log( "Hello, {0}!", "World" );
-		AATRACE3( "TRACE LEVEL IS {0}, line {1}", ATRACELEVEL, divide( 10, 0 ));
+		AATRACE3( "TRACE LEVEL IS {0}, line {1}", ATRACELEVEL, divide( 10, 2 ));
 		throw std::exception( "42" );
 
 		return 0;
