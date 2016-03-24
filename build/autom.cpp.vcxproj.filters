@@ -19,6 +19,9 @@
     <Filter Include="Source Files\test">
       <UniqueIdentifier>{13e0b252-2bb0-4013-a331-a18acd9f7bd9}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Header Files\cppformat">
+      <UniqueIdentifier>{00247f41-42d4-4af2-aeea-fe07967e5846}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\3rdparty\cppformat\cppformat\format.cc">
@@ -34,6 +37,9 @@
     </ClInclude>
     <ClInclude Include="..\include\aassert.h">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\3rdparty\cppformat\cppformat\format.h">
+      <Filter>Header Files\cppformat</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

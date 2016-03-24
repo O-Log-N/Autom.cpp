@@ -157,6 +157,7 @@
     <ClCompile Include="..\test\main.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\3rdparty\cppformat\cppformat\format.h" />
     <ClInclude Include="..\include\aassert.h" />
     <ClInclude Include="..\include\aconsole.h" />
   </ItemGroup>
