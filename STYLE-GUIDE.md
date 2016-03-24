@@ -80,6 +80,7 @@ Naming conventions examples:
 10. **MUST** use `override` for all overridden functions
 11. SHOULD use C++11 member initializers over constructors for 'member default' values 
 12. noexcept use is DISCOURAGED except for moving constructors.
+13. SHOULD use nullptr over NULL
 
 ### I.5 Misc
 
