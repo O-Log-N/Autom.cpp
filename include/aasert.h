@@ -12,7 +12,7 @@ Copyright (C) 2016 OLogN Technologies AG
     51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 *******************************************************************************/
 
-#ifndef AASERT_H
-#define AASERT_H
+#ifndef AASERT_H_INCLUDED
+#define AASERT_H_INCLUDED
 
 #endif
