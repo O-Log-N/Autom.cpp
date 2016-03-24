@@ -29,10 +29,10 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\include\aasert.h">
+    <ClInclude Include="..\include\aconsole.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\include\aconsole.h">
+    <ClInclude Include="..\include\aassert.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

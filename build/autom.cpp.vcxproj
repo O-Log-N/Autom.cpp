@@ -70,7 +70,7 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <LinkIncremental>true</LinkIncremental>
+    <LinkIncremental>false</LinkIncremental>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
@@ -154,7 +154,7 @@
     <ClCompile Include="..\test\main.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\include\aasert.h" />
+    <ClInclude Include="..\include\aassert.h" />
     <ClInclude Include="..\include\aconsole.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
