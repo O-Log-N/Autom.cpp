@@ -12,8 +12,8 @@ Copyright (C) 2016 OLogN Technologies AG
     51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 *******************************************************************************/
 
-#ifndef ACONSOLE_H
-#define ACONSOLE_H
+#ifndef ACONSOLE_H_INCLUDED
+#define ACONSOLE_H_INCLUDED
 
 #include <memory>
 #include "../3rdparty/cppformat/cppformat/format.h"
