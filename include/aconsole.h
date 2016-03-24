@@ -48,7 +48,7 @@ namespace autom
 		void log( const char* formatStr, const ARGS& ... args ) { console->info( formatStr, args... ); }
 		static int traceLevel() { return ATRACELEVEL; }
 
-		ConsoleWrapper() { console = NULL; };
+		ConsoleWrapper() { console = nullptr; };
 		ConsoleWrapper( const ConsoleWrapper& ) = delete;
 		ConsoleWrapper& operator =( const ConsoleWrapper& ) = delete;
 	};
