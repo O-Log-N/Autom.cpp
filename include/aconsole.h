@@ -31,13 +31,28 @@ static_assert( ATRACE_SOFT_DEFAULT <= ATRACE_LVL_MAX, "ATRACE_SOFT_DEFAULT <= AT
 
 namespace autom
 {
-	class Console
-	{
+	class ConsoleBase {
 		int softTraceLevel = ATRACE_SOFT_DEFAULT;
 
 	public:
+		virtual void formattedTrace( const char* s ) = 0;
+		virtual void formattedInfo( const char* s ) = 0;
+		virtual void formattedNotice( const char* s ) = 0;
+		virtual void formattedWarn( const char* s ) = 0;
+		virtual void formattedError( const char* s ) = 0;
+		virtual void formattedCritical( const char* s ) = 0;
+		virtual void formattedAlert( const char* s ) = 0;
+		virtual ~ConsoleBase() {
+		}
+
 		int traceLevel() const { return softTraceLevel; }
 
+		template< typename... ARGS >
+		void trace( const char* formatStr, const ARGS& ... args )
+		{
+			std::string s = fmt::format( formatStr, args... );
+			formattedTrace(s.c_str());
+		}
 		void trace0() {}
 		void trace1() {}
 		void trace2() {}
@@ -46,14 +61,17 @@ namespace autom
 		void trace4( const char* formatStr, const ARGS& ... args )
 		{
 			if( traceLevel() >= 4 )
-				info( formatStr, args... );
+				trace( formatStr, args... );
 		}
 
 		template< typename... ARGS >
-		void info( const char* formatStr, const ARGS& ... args )
-		{
-			fmt::print( formatStr, args... );
-			fmt::print( "\n" );
+		void log( const char* formatStr, const ARGS& ... args ) {
+			info( formatStr, args... );
+		}
+		template< typename... ARGS >
+		void info( const char* formatStr, const ARGS& ... args ) {
+			std::string s = fmt::format( formatStr, args... );
+			formattedInfo(s.c_str());
 		}
 		void notice() {}
 		void warn() {}
@@ -65,6 +83,63 @@ namespace autom
 		void timeEnd() {}
 	};
 
+	class DefaultConsole : public ConsoleBase
+	{
+	public:
+		void formattedTrace( const char* s ) override {
+			fmt::print(cout,"TRACE: {}\n",s);
+		}
+		void formattedInfo( const char* s ) override {
+			fmt::print(cout,"INFO: {}\n",s);
+		}
+		void formattedNotice( const char* s ) override {
+			fmt::print(cout,"NOTICE: {}\n",s);
+		}
+		void formattedWarn( const char* s ) override {
+			fmt::print(cout,"WARNING: {}\n",s);
+		}
+		void formattedError( const char* s ) override {
+			fmt::print(cerr,"ERROR: {}\n",s);
+		}
+		void formattedCritical( const char* s ) override {
+			fmt::print(cerr,"CRITICAL: {}\n",s);
+		}
+		void formattedAlert( const char* s ) override {
+			fmt::print(cerr,"ALERT: {}\n",s);
+		}
+	};
+	
+	class FileConsole : public ConsoleBase
+	{
+		std::ostream& os;
+	public:
+		FileConsole(std::ostream& os)
+		: os(os_) {
+		}
+
+		void formattedTrace( const char* s ) override {
+			fmt::print(os,"TRACE: {}\n",s);
+		}
+		void formattedInfo( const char* s ) override {
+			fmt::print(os,"INFO: {}\n",s);
+		}
+		void formattedNotice( const char* s ) override {
+			fmt::print(os,"NOTICE: {}\n",s);
+		}
+		void formattedWarn( const char* s ) override {
+			fmt::print(os,"WARNING: {}\n",s);
+		}
+		void formattedError( const char* s ) override {
+			fmt::print(os,"ERROR: {}\n",s);
+		}
+		void formattedCritical( const char* s ) override {
+			fmt::print(os,"CRITICAL: {}\n",s);
+		}
+		void formattedAlert( const char* s ) override {
+			fmt::print(os,"ALERT: {}\n",s);
+		}
+	};
+
 	class ConsoleWrapper
 	{
 		class ConsoleWrapperDeleter_ {
@@ -74,17 +149,17 @@ namespace autom
 			void _keepForever() {
 				forever = true;
 			}
-			void operator()(Console* c) {
+			void operator()(ConsoleBase* c) {
 				if(!forever)
 					delete c;
 			}
 		};
 
-		std::unique_ptr<Console,ConsoleWrapperDeleter_> console;
+		std::unique_ptr<ConsoleBase,ConsoleWrapperDeleter_> console;
 		int lostMessages = 0;
 
 	public:
-		void assign( std::unique_ptr<Console> console_ )
+		void assign( std::unique_ptr<ConsoleBase> console_ )
 		{
 			console = console_.release();
 			if( lostMessages )
@@ -108,10 +183,10 @@ namespace autom
 		}
 
 		template< typename... ARGS >
-		void log( const char* formatStr, const ARGS& ... args )
+		void trace( const char* formatStr, const ARGS& ... args )
 		{
 			if( console )
-				console->info( formatStr, args... );
+				console->trace( formatStr, args... );
 			else
 				++lostMessages;
 		}
@@ -125,7 +200,7 @@ namespace autom
 #define AATRACE4(...)\
 do {\
 	if(console.traceLevel()>=4)\
-		console.log(__VA_ARGS__);\
+		console.trace(__VA_ARGS__);\
 	} while(0)
 #else
 #define AATRACE4(...)
@@ -135,7 +210,7 @@ do {\
 #define AATRACE3(...)\
 do {\
 	if(console.traceLevel()>=3)\
-		console.log(__VA_ARGS__);\
+		console.trace(__VA_ARGS__);\
 	} while(0)
 #else
 #define AATRACE3(...)
@@ -145,7 +220,7 @@ do {\
 #define AATRACE2(...)\
 do {\
 	if(console.traceLevel()>=2)\
-		console.log(__VA_ARGS__);\
+		console.trace(__VA_ARGS__);\
 	} while(0)
 #else
 #define AATRACE2(...)
@@ -154,8 +229,8 @@ do {\
 #if ( ATRACE_LVL_MAX >= 1 )
 #define AATRACE1(...)\
 do {\
-	if(console.traceLevel()>=1)\
-		console.log(__VA_ARGS__);\
+	if(console.trace()>=1)\
+		console.trace(__VA_ARGS__);\
 	} while(0)
 #else
 #define AATRACE1(...)
@@ -163,7 +238,7 @@ do {\
 
 #define AATRACE0(...)\
 do {\
-	console.log(__VA_ARGS__);\
+	console.trace(__VA_ARGS__);\
 	} while(0)
 
 #endif
