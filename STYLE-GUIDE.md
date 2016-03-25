@@ -38,6 +38,7 @@ Naming conventions examples:
 4. #define MY_STRING "abracadabra" //see below on #defines
 5. #ifndef FILE_NAME_INCLUDED //"include guard"
 6. **MUST NOT** use identifiers starting with an underscore OR containing adjacent double underscore (technically reserved for C++)
+    - Exception: MAY use class member functions and data members starting with an '_' (next symbol **MUST** be a lowercase to comply with standard, but with our convention this stands for members anyway). Such underscored functions/data-members, when public, indicate "READ COMMENTS/DOC BEFORE USING", and **MUST** have an elaborated comment explaining why the function/data-member is so peculiar
 7. Classes and functions which are used ONLY for debugging purposes (such as "dumpSomething()") SHOULD start with Dbg*/dbg*() respectively
 8. file names: file_name.h
 
