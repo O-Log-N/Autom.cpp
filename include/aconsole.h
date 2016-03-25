@@ -33,6 +33,7 @@ namespace autom
 {
 	class ConsoleBase {
 		int softTraceLevel = ATRACE_SOFT_DEFAULT;
+		int nMessages = 0;
 
 	public:
 		virtual void formattedTrace( const char* s ) = 0;
@@ -46,11 +47,13 @@ namespace autom
 		}
 
 		int traceLevel() const { return softTraceLevel; }
+		int messageCount() const { return nMessages; }
 
 		template< typename... ARGS >
 		void trace( const char* formatStr, const ARGS& ... args )
 		{
 			std::string s = fmt::format( formatStr, args... );
+			++nMessages;
 			formattedTrace(s.c_str());
 		}
 		void trace0() {}
@@ -71,6 +74,7 @@ namespace autom
 		template< typename... ARGS >
 		void info( const char* formatStr, const ARGS& ... args ) {
 			std::string s = fmt::format( formatStr, args... );
+			++nMessages;
 			formattedInfo(s.c_str());
 		}
 		void notice() {}
@@ -142,31 +146,33 @@ namespace autom
 
 	class ConsoleWrapper
 	{
-		class ConsoleWrapperDeleter_ {
-			bool forever = false;
-			
-			public:
-			void _keepForever() {
-				forever = true;
-			}
-			void operator()(ConsoleBase* c) {
-				if(!forever)
-					delete c;
-			}
-		};
-
-		std::unique_ptr<ConsoleBase,ConsoleWrapperDeleter_> console;
-		int lostMessages = 0;
+		ConsoleBase* consolePtr = nullptr;
+			//we're NOT using std::unique_ptr<> here
+			//  to guarantee that for a global ConsoleWrapper
+			//  consolePtr is set as early as in 'zero inititialization' phase
+		int prevConsolesMessages = 0;
+		bool forever = false;
 
 	public:
-		void assign( std::unique_ptr<ConsoleBase> console_ )
-		{
-			console = console_.release();
-			if( lostMessages )
-			{
-				console->warn( "autom::ConsoleWrapper: {0} message(s) have been lost before ConsoleWrapper was initialized", lostMessages );
-				lostMessages = 0;
+		ConsoleWrapper() {
+			//it is IMPORTANT to have this constructor even though all the functions
+			//  account for consolePtr possible being nullptr
+			//This constructor guarantees that before main() we have the consolePtr valid,
+			//  and that therefore no issues can arise due to multithreading
+			//  (except when assignNewConsole() is explicitly called)
+			ensureInit();
+		}
+		void assignNewConsole( std::unique_ptr<ConsoleBase> newConsole ) {
+			int nMsg = 0;
+			if(consolePtr) {
+				nMsg = consolePtr->messageCount();
+				delete consolePtr;
 			}
+			
+			consolePtr = newConsole.release();
+			prevConsolesMessages += nMsg;
+			if( prevConsolesMessages )
+				consolePtr->info( "autom::ConsoleWrapper::assignNewConsole(): {0} message(s) has been sent to previous Console(s)", prevConsolesMessages );
 		}
 		void _keepForever()
 		//CAUTION: this function MAY cause memory leaks when used on non-GLOBAL objects
@@ -174,25 +180,34 @@ namespace autom
 		//  to allow tracing within global destructors
 		//  without worrying about global destructor call order
 		{
-			console.get_deleter()._keepForever();
+			forever = true;
 		}
 
 		int traceLevel() const
 		{
-			return console ? console->traceLevel() : ATRACE_LVL_MAX;
+			ensureInit();
+			return consolePtr->traceLevel();
 		}
 
 		template< typename... ARGS >
 		void trace( const char* formatStr, const ARGS& ... args )
 		{
-			if( console )
-				console->trace( formatStr, args... );
-			else
-				++lostMessages;
+			ensureInit();
+			consolePtr->trace( formatStr, args... );
 		}
 		
 		ConsoleWrapper( const ConsoleWrapper& ) = delete;
 		ConsoleWrapper& operator =( const ConsoleWrapper& ) = delete;
+		~ConsoleWrapper() {
+			if(consolePtr && !forever)
+				delete consolePtr;
+		}
+		
+		private:
+		void ensureInit() {
+			if(!consolePtr)
+				consolePtr = new DefaultConsole();
+		}
 	};
 	
 	extern ConsoleWrapper console;
