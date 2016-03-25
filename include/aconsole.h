@@ -160,7 +160,7 @@ namespace autom
 			//This constructor guarantees that before main() we have the consolePtr valid,
 			//  and that therefore no issues can arise due to multithreading
 			//  (except when assignNewConsole() is explicitly called)
-			ensureInit();
+			_ensureInit();
 		}
 		void assignNewConsole( std::unique_ptr<ConsoleBase> newConsole ) {
 			int nMsg = 0;
@@ -174,7 +174,7 @@ namespace autom
 			if( prevConsolesMessages )
 				consolePtr->info( "autom::ConsoleWrapper::assignNewConsole(): {0} message(s) has been sent to previous Console(s)", prevConsolesMessages );
 		}
-		void _keepForever()
+		void rtfmKeepForever()
 		//CAUTION: this function MAY cause memory leaks when used on non-GLOBAL objects
 		//  on GLOBAL objects it is fine, and MAY be useful
 		//  to allow tracing within global destructors
@@ -185,14 +185,14 @@ namespace autom
 
 		int traceLevel() const
 		{
-			ensureInit();
+			_ensureInit();
 			return consolePtr->traceLevel();
 		}
 
 		template< typename... ARGS >
 		void trace( const char* formatStr, const ARGS& ... args )
 		{
-			ensureInit();
+			_ensureInit();
 			consolePtr->trace( formatStr, args... );
 		}
 		
@@ -204,7 +204,7 @@ namespace autom
 		}
 		
 		private:
-		void ensureInit() {
+		void _ensureInit() {
 			if(!consolePtr)
 				consolePtr = new DefaultConsole();
 		}
