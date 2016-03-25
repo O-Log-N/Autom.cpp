@@ -117,7 +117,7 @@ namespace autom
 	{
 		std::ostream& os;
 	public:
-		FileConsole(std::ostream& os)
+		FileConsole(std::ostream& os_)
 		: os(os_) {
 		}
 
@@ -150,7 +150,7 @@ namespace autom
 			//we're NOT using std::unique_ptr<> here
 			//  to guarantee that for a global ConsoleWrapper
 			//  consolePtr is set as early as in 'zero inititialization' phase
-		int prevConsolesMessages = 0;
+		int prevConsolesMessages = 0;//as in 'messages to previous consoles'
 		bool forever = false;
 
 	public:
