@@ -23,16 +23,16 @@ Copyright (C) 2016 OLogN Technologies AG
 static_assert( ATRACE_LVL_MAX >= 0, "ATRACE_LVL_MAX >= 0" );
 static_assert( ATRACE_LVL_MAX <= 4, "ATRACE_LVL_MAX <= 4" );
 
-#ifndef ATRACE_SOFT_DEFAULT
-#define ATRACE_SOFT_DEFAULT 2 // Default value for runtime trace level
+#ifndef ATRACE_LVL_DEFAULT
+#define ATRACE_LVL_DEFAULT 2 // Default value for runtime trace level
 #endif
-static_assert( ATRACE_SOFT_DEFAULT >= 0, "ATRACE_SOFT_DEFAULT >= 0" );
-static_assert( ATRACE_SOFT_DEFAULT <= ATRACE_LVL_MAX, "ATRACE_SOFT_DEFAULT <= ATRACE_LVL_MAX" );
+static_assert( ATRACE_LVL_DEFAULT >= 0, "ATRACE_LVL_DEFAULT >= 0" );
+static_assert( ATRACE_LVL_DEFAULT <= ATRACE_LVL_MAX, "ATRACE_LVL_DEFAULT <= ATRACE_LVL_MAX" );
 
 namespace autom
 {
 	class ConsoleBase {
-		int softTraceLevel = ATRACE_SOFT_DEFAULT;
+		int softTraceLevel = ATRACE_LVL_DEFAULT;
 		int nMessages = 0;
 
 	public:
