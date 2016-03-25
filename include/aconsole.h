@@ -214,46 +214,46 @@ namespace autom
 }
 
 #if ( ATRACE_LVL_MAX >= 4 )
-#define AATRACE4(...)\
+#define ATRACE4(...)\
 do {\
 	if(console.traceLevel()>=4)\
 		console.trace(__VA_ARGS__);\
 	} while(0)
 #else
-#define AATRACE4(...)
+#define ATRACE4(...)
 #endif
 
 #if ( ATRACE_LVL_MAX >= 3 )
-#define AATRACE3(...)\
+#define ATRACE3(...)\
 do {\
 	if(console.traceLevel()>=3)\
 		console.trace(__VA_ARGS__);\
 	} while(0)
 #else
-#define AATRACE3(...)
+#define ATRACE3(...)
 #endif
 
 #if ( ATRACE_LVL_MAX >= 2 )
-#define AATRACE2(...)\
+#define ATRACE2(...)\
 do {\
 	if(console.traceLevel()>=2)\
 		console.trace(__VA_ARGS__);\
 	} while(0)
 #else
-#define AATRACE2(...)
+#define ATRACE2(...)
 #endif
 
 #if ( ATRACE_LVL_MAX >= 1 )
-#define AATRACE1(...)\
+#define ATRACE1(...)\
 do {\
 	if(console.traceLevel()>=1)\
 		console.trace(__VA_ARGS__);\
 	} while(0)
 #else
-#define AATRACE1(...)
+#define ATRACE1(...)
 #endif
 
-#define AATRACE0(...)\
+#define ATRACE0(...)\
 do {\
 	console.trace(__VA_ARGS__);\
 	} while(0)
