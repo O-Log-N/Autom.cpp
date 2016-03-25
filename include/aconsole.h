@@ -149,7 +149,7 @@ namespace autom
 		ConsoleBase* consolePtr = nullptr;
 			//we're NOT using std::unique_ptr<> here
 			//  to guarantee that for a global ConsoleWrapper
-			//  consolePtr is set as early as in 'zero inititialization' phase
+			//  consolePtr is set before ANY global object constructor is called
 		int prevConsolesMessages = 0;//as in 'messages to previous consoles'
 		bool forever = false;
 
