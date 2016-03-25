@@ -67,18 +67,39 @@ namespace autom
 
 	class ConsoleWrapper
 	{
-		Console* console = nullptr;
+		class ConsoleWrapperDeleter_ {
+			bool forever = false;
+			
+			public:
+			void _keepForever() {
+				forever = true;
+			}
+			void operator()(Console* c) {
+				if(!forever)
+					delete c;
+			}
+		};
+
+		std::unique_ptr<Console,ConsoleWrapperDeleter_> console;
 		int lostMessages = 0;
 
 	public:
-		void assign( Console* console_ )
+		void assign( std::unique_ptr<Console> console_ )
 		{
-			console = console_;
+			console = console_.release();
 			if( lostMessages )
 			{
 				console->trace4( "Lost messages: {0}", lostMessages );
 				lostMessages = 0;
 			}
+		}
+		void _keepForever()
+		//CAUTION: this function MAY cause memory leaks when used on non-GLOBAL objects
+		//  on GLOBAL objects it is fine, and MAY be useful
+		//  to allow tracing within global destructors
+		//  without worrying about global destructor call order
+		{
+			console.get_deleter()._keepForever();
 		}
 
 		int traceLevel() const
