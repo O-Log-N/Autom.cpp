@@ -15,5 +15,5 @@ Copyright (C) 2016 OLogN Technologies AG
 #include "../include/aconsole.h"
 
 namespace autom {
-	ConsoleWrapper console;
+ConsoleWrapper console;
 }
