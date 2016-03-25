@@ -17,6 +17,8 @@ Copyright (C) 2016 OLogN Technologies AG
 
 #include "../3rdparty/cppformat/cppformat/format.h"
 
+#include <iostream>
+
 #ifndef ATRACE_LVL_MAX
 #define ATRACE_LVL_MAX 4 // Compile time max trace level
 #endif
@@ -91,25 +93,25 @@ namespace autom
 	{
 	public:
 		void formattedTrace( const char* s ) override {
-			fmt::print(cout,"TRACE: {}\n",s);
+			fmt::print(std::cout,"TRACE: {}\n",s);
 		}
 		void formattedInfo( const char* s ) override {
-			fmt::print(cout,"INFO: {}\n",s);
+			fmt::print(std::cout,"INFO: {}\n",s);
 		}
 		void formattedNotice( const char* s ) override {
-			fmt::print(cout,"NOTICE: {}\n",s);
+			fmt::print(std::cout,"NOTICE: {}\n",s);
 		}
 		void formattedWarn( const char* s ) override {
-			fmt::print(cout,"WARNING: {}\n",s);
+			fmt::print(std::cout,"WARNING: {}\n",s);
 		}
 		void formattedError( const char* s ) override {
-			fmt::print(cerr,"ERROR: {}\n",s);
+			fmt::print(std::cout,"ERROR: {}\n",s);
 		}
 		void formattedCritical( const char* s ) override {
-			fmt::print(cerr,"CRITICAL: {}\n",s);
+			fmt::print(std::cout,"CRITICAL: {}\n",s);
 		}
 		void formattedAlert( const char* s ) override {
-			fmt::print(cerr,"ALERT: {}\n",s);
+			fmt::print(std::cout,"ALERT: {}\n",s);
 		}
 	};
 	
@@ -183,7 +185,7 @@ namespace autom
 			forever = true;
 		}
 
-		int traceLevel() const
+		int traceLevel()
 		{
 			_ensureInit();
 			return consolePtr->traceLevel();
