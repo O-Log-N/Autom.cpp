@@ -38,9 +38,10 @@ Naming conventions examples:
 4. #define MY_STRING "abracadabra" //see below on #defines
 5. #ifndef FILE_NAME_INCLUDED //"include guard"
 6. **MUST NOT** use identifiers starting with an underscore OR containing adjacent double underscore (technically reserved for C++)
-    - Exception: MAY use class member functions and data members starting with an '_' (next symbol **MUST** be a lowercase to comply with standard, but with our convention this stands for members anyway). Such underscored functions/data-members, when public, indicate "READ COMMENTS/DOC BEFORE USING", and **MUST** have an elaborated comment explaining why the function/data-member is so peculiar
+    - Exception: MAY use class member functions and data members starting with an '_' (next symbol **MUST** be a lowercase to comply with standard, but with our convention this stands for members anyway). Such underscored functions/data-members are reserved for private-only stuff
 7. Classes and functions which are used ONLY for debugging purposes (such as "dumpSomething()") SHOULD start with Dbg*/dbg*() respectively
 8. file names: file_name.h
+9. RTFM* Classes / rtfm*() functions. Certain classes/functions are unusual/dangerous enough to make sure that developer-using-them has read comments/doc before using them. Such classes/functions SHOULD be prefixed with RTFM (for classes, for example, RTFMStrangeClass), or with rtfm (for function/data-members, for example, rtfmStrangeFunction()).
 
 ### I.2 On #includes
 
