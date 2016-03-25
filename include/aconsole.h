@@ -229,7 +229,7 @@ do {\
 #if ( ATRACE_LVL_MAX >= 1 )
 #define AATRACE1(...)\
 do {\
-	if(console.trace()>=1)\
+	if(console.traceLevel()>=1)\
 		console.trace(__VA_ARGS__);\
 	} while(0)
 #else
