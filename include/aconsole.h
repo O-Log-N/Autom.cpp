@@ -194,6 +194,8 @@ namespace autom
 		ConsoleWrapper( const ConsoleWrapper& ) = delete;
 		ConsoleWrapper& operator =( const ConsoleWrapper& ) = delete;
 	};
+	
+	extern ConsoleWrapper console;
 }
 
 #if ( ATRACE_LVL_MAX >= 4 )
