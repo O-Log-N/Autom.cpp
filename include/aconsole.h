@@ -33,14 +33,9 @@ namespace autom
 {
 	class Console
 	{
-		int softTraceLevel;
+		int softTraceLevel = ATRACE_SOFT_DEFAULT;
 
 	public:
-		Console()
-		{
-			softTraceLevel = ATRACE_SOFT_DEFAULT;
-		}
-
 		int traceLevel() const { return softTraceLevel; }
 
 		void trace0() {}
@@ -72,8 +67,8 @@ namespace autom
 
 	class ConsoleWrapper
 	{
-		Console* console;
-		int lostMessages;
+		Console* console = nullptr;
+		int lostMessages = 0;
 
 	public:
 		void assign( Console* console_ )
@@ -100,11 +95,6 @@ namespace autom
 				++lostMessages;
 		}
 		
-		ConsoleWrapper()
-		{
-			console = nullptr;
-			lostMessages = 0;
-		};
 		ConsoleWrapper( const ConsoleWrapper& ) = delete;
 		ConsoleWrapper& operator =( const ConsoleWrapper& ) = delete;
 	};
