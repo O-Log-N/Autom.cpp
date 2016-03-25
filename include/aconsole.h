@@ -199,8 +199,10 @@ namespace autom
 		ConsoleWrapper( const ConsoleWrapper& ) = delete;
 		ConsoleWrapper& operator =( const ConsoleWrapper& ) = delete;
 		~ConsoleWrapper() {
-			if(consolePtr && !forever)
+			if(consolePtr && !forever) {
 				delete consolePtr;
+				consolePtr = nullptr;
+			}
 		}
 		
 		private:
