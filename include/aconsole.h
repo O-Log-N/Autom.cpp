@@ -164,7 +164,7 @@ namespace autom
 			console = console_.release();
 			if( lostMessages )
 			{
-				console->trace4( "Lost messages: {0}", lostMessages );
+				console->warn( "autom::ConsoleWrapper: {0} message(s) have been lost before ConsoleWrapper was initialized", lostMessages );
 				lostMessages = 0;
 			}
 		}
