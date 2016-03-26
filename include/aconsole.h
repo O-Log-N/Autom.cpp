@@ -167,7 +167,8 @@ class FileConsole : public Console
 		~ConsoleWrapper() {
 			if(consolePtr && !forever) {
 				delete consolePtr;
-				consolePtr = nullptr;
+				consolePtr = nullptr;//important here as global ConsoleWrapper MAY
+				                     //  outlive its own destructor
 			}
 		}
 
