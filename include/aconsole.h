@@ -22,29 +22,50 @@ Copyright (C) 2016 OLogN Technologies AG
 #ifndef ATRACE_LVL_MAX
 #define ATRACE_LVL_MAX 4 // Compile time max trace level
 #endif
+
+//NB: MSVC doesn't support single-parameter static_assert() :-(
 static_assert( ATRACE_LVL_MAX >= 0, "ATRACE_LVL_MAX >= 0" );
 static_assert( ATRACE_LVL_MAX <= 4, "ATRACE_LVL_MAX <= 4" );
 
 #ifndef ATRACE_LVL_DEFAULT
 #define ATRACE_LVL_DEFAULT 2 // Default value for runtime trace level
 #endif
+
+//NB: MSVC doesn't support single-parameter static_assert() :-(
 static_assert( ATRACE_LVL_DEFAULT >= 0, "ATRACE_LVL_DEFAULT >= 0" );
 static_assert( ATRACE_LVL_DEFAULT <= ATRACE_LVL_MAX, "ATRACE_LVL_DEFAULT <= ATRACE_LVL_MAX" );
 
 namespace autom
 {
 class Console {
-		int softTraceLevel = ATRACE_LVL_DEFAULT;
-		int nMessages = 0;
-
 	public:
-    enum class TraceLevel : int
+    enum WRITELEVEL //NOT using enum class here to enable shorter console.write(Console::INFO,...);
     {
-        TRACE0 = 0, TRACE1, TRACE2, TRACE3, TRACE4,
-        INFO, NOTICE, WARN, ERROR, CRITICAL, ALERT
+        TRACE = 0, INFO = 1, NOTICE = 2, WARN = 3, ERROR = 4, CRITICAL = 5, ALERT = 6
+    };
+    
+    class TimeLabel {
+    	size_t idx;
     };
 
-    virtual void formattedTrace( TraceLevel lvl, const char* s ) = 0;
+	private:
+		static const size_t ATIMENONE = static_cast<size_t>(-1);
+		struct PrivateATimeStoredType {
+			size_t nextFree = ATIMENONE;
+			std::chrono_time_point began = 0;
+		};
+		
+		int softTraceLevel = ATRACE_LVL_DEFAULT;
+		int nMessages = 0;//statistics-only; NON-STRICT in MT environments
+		size_t firstFreeATime = ATIMENONE;
+		std::vector<PrivateATimeStoredType> aTimes;//for Autom-style timeWithLabel()/timeEnd()
+							   //'sparse' vector with firstFreeATime forming single-linked list
+							   //in nextFree items
+#ifndef ASTRIP_NODEJS_COMPAT
+		std::unordered_map<std::string,std::chrono::time_point> njTimes;
+#endif    
+	public:
+    virtual void formattedWrite( WRITELEVEL lvl, const char* s ) = 0;
     virtual ~Console() {
 		}
 
@@ -56,86 +77,69 @@ class Console {
 		}
 
 		template< typename... ARGS >
-    void trace( TraceLevel lvl, const char* formatStr, const ARGS& ... args ) {
+    void write( WRITELEVEL lvl, const char* formatStr, const ARGS& ... args ) {
 			std::string s = fmt::format( formatStr, args... );
 			++nMessages;
-        formattedTrace(lvl,s.c_str());
+        formattedWrite(lvl,s.c_str());
 		}
+		
+		TimeLabel timeWithLabel();
+		void timeEnd(TimeLabel label, const char* text);
+		//usage pattern for Autom-style time tracing:
+		//auto label = timeWithLabel();
+		//... code to be benchmarked
+		//timeEnd(label,"My Time Label A");
 
-		void time() {}
-		void timeEnd() {}
+#ifndef ASTRIP_NODEJS_COMPAT
+		//{ NODE.JS COMPATIBILITY HELPERS
+		void time(const char* label);
+		void timeEnd(const char* label);
+		//usage pattern for Node.js-style time tracing
+		// (LESS EFFICIENT THAN Autom-style):
+		//time("My Time Label A");
+		//... code to be benchmarked
+		//timeEnd("My Time Label A");
+
+		template< typename... ARGS >
+    void error( const char* formatStr, const ARGS& ... args ) {
+    	write(ERROR,formatStr, args...);
+		}
+		template< typename... ARGS >
+    void info( const char* formatStr, const ARGS& ... args ) {
+    	write(INFO,formatStr, args...);
+		}
+		template< typename... ARGS >
+    void log( const char* formatStr, const ARGS& ... args ) {
+    	write(INFO,formatStr, args...);
+		}
+		template< typename... ARGS >
+    void trace( const char* formatStr, const ARGS& ... args ) {
+    	write(TRACE,formatStr, args...);
+		}
+		template< typename... ARGS >
+    void warn( const char* formatStr, const ARGS& ... args ) {
+    	write(WARN,formatStr, args...);
+		}
+		//} NODE.JS COMPATIBILITY HELPERS
+#endif
 	};
 
 class DefaultConsole : public Console
 {
-    const char* traceMarker( TraceLevel lvl ) const {
-        switch( lvl )
-	{
-        case TraceLevel::INFO:
-            return "INFO";
-        case TraceLevel::NOTICE:
-            return "NOTICE";
-        case TraceLevel::WARN:
-            return "WARN";
-        case TraceLevel::ERROR:
-            return "ERROR";
-        case TraceLevel::CRITICAL:
-            return "CRITICAL";
-        case TraceLevel::ALERT:
-            return "ALERT";
-        default:
-            return "";
-		}
-		}
-
 public:
-    void formattedTrace( TraceLevel lvl, const char* s ) override {
-        fmt::print(std::cout,"{}: {}\n",traceMarker(lvl),s);
-		}
+    void formattedWrite( WRITELEVEL lvl, const char* s ) override;
 	};
 	
 class FileConsole : public Console
 	{
 		std::ostream& os;
 
-    const char* traceMarker( TraceLevel lvl ) const {
-        switch( lvl )
-        {
-        case TraceLevel::TRACE0:
-            return "T0";
-        case TraceLevel::TRACE1:
-            return "T1";
-        case TraceLevel::TRACE2:
-            return "T2";
-        case TraceLevel::TRACE3:
-            return "T3";
-        case TraceLevel::TRACE4:
-            return "T4";
-        case TraceLevel::INFO:
-            return "INFO";
-        case TraceLevel::NOTICE:
-            return "NOTICE";
-        case TraceLevel::WARN:
-            return "WARN";
-        case TraceLevel::ERROR:
-            return "ERROR";
-        case TraceLevel::CRITICAL:
-            return "CRITICAL";
-        case TraceLevel::ALERT:
-            return "ALERT";
-        default:
-            return "";
-        }
-    }
-
 	public:
 		FileConsole(std::ostream& os_)
 		: os(os_) {
 		}
 
-    void formattedTrace( TraceLevel lvl, const char* s ) override {
-        fmt::print(os,"{}: {}\n",traceMarker( lvl ),s);
-		}
+    void formattedWrite( WRITELEVEL lvl, const char* s ) override;
 	};
 
 	class ConsoleWrapper
@@ -166,7 +170,7 @@ class FileConsole : public Console
 			consolePtr = newConsole.release();
 			prevConsolesMessages += nMsg;
 			if( prevConsolesMessages )
-            consolePtr->trace( Console::TraceLevel::INFO, "autom::ConsoleWrapper::assignNewConsole(): {0} message(s) has been sent to previous Console(s)", prevConsolesMessages );
+            consolePtr->write( Console::INFO, "autom::ConsoleWrapper::assignNewConsole(): {0} message(s) has been sent to previous Console(s)", prevConsolesMessages );
 		}
 		void rtfmKeepForever()
 		//CAUTION: this function MAY cause memory leaks when used on non-GLOBAL objects
@@ -184,10 +188,10 @@ class FileConsole : public Console
 		}
 
 		template< typename... ARGS >
-    void trace( Console::TraceLevel lvl, const char* formatStr, const ARGS& ... args )
+    void write( Console::WRITELEVEL lvl, const char* formatStr, const ARGS& ... args )
 		{
 			_ensureInit();
-        consolePtr->trace( lvl, formatStr, args... );
+        consolePtr->write( lvl, formatStr, args... );
 		}
 		
 		ConsoleWrapper( const ConsoleWrapper& ) = delete;
@@ -195,9 +199,53 @@ class FileConsole : public Console
 		~ConsoleWrapper() {
 			if(consolePtr && !forever) {
 				delete consolePtr;
-				consolePtr = nullptr;
+				consolePtr = nullptr;//important here as global ConsoleWrapper MAY
+				                     //  outlive its own destructor
 			}
 		}
+		
+		Console::TimeLabel timeWithLabel() {
+			_ensureInit();
+			return consolePtr->timeWithLabel();
+		}
+		void timeEnd(Console::TimeLabel label, const char* text){
+			_ensureInit();
+			consolePtr->timeEnd(label, text);
+		}
+
+#ifndef ASTRIP_NODEJS_COMPAT
+		//{ NODE.JS COMPATIBILITY HELPERS
+		void time(const char* label) {
+			_ensureInit();
+			consolePtr->time(label);
+		}
+		void timeEnd(const char* label) {
+			_ensureInit();
+			consolePtr->timeEnd(label);
+		}
+
+		template< typename... ARGS >
+    void error( const char* formatStr, const ARGS& ... args ) {
+    	consolePtr->error(formatStr, args...);
+		}
+		template< typename... ARGS >
+    void info( const char* formatStr, const ARGS& ... args ) {
+    	consolePtr->info(formatStr, args...);
+		}
+		template< typename... ARGS >
+    void log( const char* formatStr, const ARGS& ... args ) {
+    	consolePtr->log(formatStr, args...);
+		}
+		template< typename... ARGS >
+    void trace( const char* formatStr, const ARGS& ... args ) {
+    	consolePtr->trace(formatStr, args...);
+		}
+		template< typename... ARGS >
+    void warn( const char* formatStr, const ARGS& ... args ) {
+    	consolePtr->warn(formatStr, args...);
+		}
+		//} NODE.JS COMPATIBILITY HELPERS
+#endif
 		
 		private:
 		void _ensureInit() {
@@ -213,7 +261,7 @@ class FileConsole : public Console
 #define ATRACE4(...)\
 do {\
 	if(console.traceLevel()>=4)\
-		console.trace(autom::Console::TraceLevel::TRACE4,__VA_ARGS__);\
+		autom::console.write(autom::Console::TRACE,__VA_ARGS__);\
 	} while(0)
 #else
 #define ATRACE4(...)
@@ -223,7 +271,7 @@ do {\
 #define ATRACE3(...)\
 do {\
 	if(console.traceLevel()>=3)\
-		console.trace(autom::Console::TraceLevel::TRACE3,__VA_ARGS__);\
+		autom::console.write(autom::Console::TRACE,__VA_ARGS__);\
 	} while(0)
 #else
 #define ATRACE3(...)
@@ -233,7 +281,7 @@ do {\
 #define ATRACE2(...)\
 do {\
 	if(console.traceLevel()>=2)\
-		console.trace(autom::Console::TraceLevel::TRACE2,__VA_ARGS__);\
+		autom::console.write(autom::Console::TRACE,__VA_ARGS__);\
 	} while(0)
 #else
 #define ATRACE2(...)
@@ -243,7 +291,7 @@ do {\
 #define ATRACE1(...)\
 do {\
 	if(console.traceLevel()>=1)\
-		console.trace(autom::Console::TraceLevel::TRACE1,__VA_ARGS__);\
+		autom::console.write(autom::Console::TRACE,__VA_ARGS__);\
 	} while(0)
 #else
 #define ATRACE1(...)
@@ -252,7 +300,7 @@ do {\
 #define ATRACE0(...)\
 do {\
 	if(console.traceLevel()>=0)\
-		console.trace(autom::Console::TraceLevel::TRACE0,__VA_ARGS__);\
+		autom::console.write(autom::Console::TRACE,__VA_ARGS__);\
 	} while(0)
 
 #endif
