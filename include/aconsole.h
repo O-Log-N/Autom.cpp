@@ -45,15 +45,22 @@ class Console {
     };
     
     class TimeLabel {
-    	int label;	
+    	size_t idx;
     };
 
 	private:
-		typedef std::common_type<size_t,std::chrono::time_point> TimeStoredType;
+		static const size_t ATIMENONE = static_cast<size_t>(-1);
+		struct PrivateATimeStoredType {
+			size_t nextFree = ATIMENONE;
+			std::chrono_time_point began = 0;
+		};
 		
 		int softTraceLevel = ATRACE_LVL_DEFAULT;
 		int nMessages = 0;
-		std::vector<TimeStoredType> aTimes;//for Autom-style timeWithLabel()/timeEnd()
+		size_t firstFreeATime = ATIMENONE;
+		std::vector<PrivateATimeStoredType> aTimes;//for Autom-style timeWithLabel()/timeEnd()
+							   //'sparse' vector with firstFreeATime forming single-linked list
+							   //in nextFree items
 		std::unordered_map<std::string,std::chrono::time_point> njTimes;
     
 	public:
@@ -76,11 +83,11 @@ class Console {
 		}
 		
 		TimeLabel timeWithLabel();
-		void timeEnd(TimeLabel label);
+		void timeEnd(TimeLabel label, const char* text);
 		//usage pattern for Autom-style time tracing:
 		//auto label = timeWithLabel();
 		//... code to be benchmarked
-		//timeEnd(label);
+		//timeEnd(label,"My Time Label A");
 
 		//{ NODE.JS COMPATIBILITY HELPERS
 		void time(const char* label);
