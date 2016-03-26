@@ -26,7 +26,7 @@ static_assert( ATRACE_LVL_MAX >= 0, "ATRACE_LVL_MAX >= 0" );
 static_assert( ATRACE_LVL_MAX <= 4, "ATRACE_LVL_MAX <= 4" );
 
 #ifndef ATRACE_LVL_DEFAULT
-#define ATRACE_LVL_DEFAULT 4 // Default value for runtime trace level
+#define ATRACE_LVL_DEFAULT 2 // Default value for runtime trace level
 #endif
 static_assert( ATRACE_LVL_DEFAULT >= 0, "ATRACE_LVL_DEFAULT >= 0" );
 static_assert( ATRACE_LVL_DEFAULT <= ATRACE_LVL_MAX, "ATRACE_LVL_DEFAULT <= ATRACE_LVL_MAX" );
@@ -68,8 +68,7 @@ public:
 
 class DefaultConsole : public Console
 {
-    const char* traceMarker( TraceLevel lvl ) const
-    {
+    const char* traceMarker( TraceLevel lvl ) const {
         switch( lvl )
         {
         case TraceLevel::INFO:
@@ -99,8 +98,7 @@ class FileConsole : public Console
 {
     std::ostream& os;
 
-    const char* traceMarker( TraceLevel lvl ) const
-    {
+    const char* traceMarker( TraceLevel lvl ) const {
         switch( lvl )
         {
         case TraceLevel::TRACE0:
@@ -251,7 +249,8 @@ do {\
 
 #define ATRACE0(...)\
 do {\
-	console.trace(autom::Console::TraceLevel::TRACE0,__VA_ARGS__);\
+	if(console.traceLevel()>=0)\
+		console.trace(autom::Console::TraceLevel::TRACE0,__VA_ARGS__);\
 	} while(0)
 
 #endif
