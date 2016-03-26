@@ -38,15 +38,25 @@ static_assert( ATRACE_LVL_DEFAULT <= ATRACE_LVL_MAX, "ATRACE_LVL_DEFAULT <= ATRA
 namespace autom
 {
 class Console {
-		int softTraceLevel = ATRACE_LVL_DEFAULT;
-		int nMessages = 0;
-
 	public:
     enum WRITELEVEL //NOT using enum class here to enable shorter console.write(Console::INFO,...);
     {
         TRACE = 0, INFO = 1, NOTICE = 2, WARN = 3, ERROR = 4, CRITICAL = 5, ALERT = 6
     };
+    
+    class TimeLabel {
+    	int label;	
+    };
 
+	private:
+		typedef std::common_type<size_t,std::chrono::time_point> TimeStoredType;
+		
+		int softTraceLevel = ATRACE_LVL_DEFAULT;
+		int nMessages = 0;
+		std::vector<TimeStoredType> aTimes;//for Autom-style timeWithLabel()/timeEnd()
+		std::unordered_map<std::string,std::chrono::time_point> njTimes;
+    
+	public:
     virtual void formattedWrite( WRITELEVEL lvl, const char* s ) = 0;
     virtual ~Console() {
 		}
@@ -64,11 +74,23 @@ class Console {
 			++nMessages;
         formattedWrite(lvl,s.c_str());
 		}
-
-		void time() {}
-		void timeEnd() {}
 		
+		TimeLabel timeWithLabel();
+		void timeEnd(TimeLabel label);
+		//usage pattern for Autom-style time tracing:
+		//auto label = timeWithLabel();
+		//... code to be benchmarked
+		//timeEnd(label);
+
 		//{ NODE.JS COMPATIBILITY HELPERS
+		void time(const char* label);
+		void timeEnd(const char* label);
+		//usage pattern for Node.js-style time tracing
+		// (LESS EFFICIENT THAN Autom-style):
+		//time("My Time Label A");
+		//... code to be benchmarked
+		//timeEnd("My Time Label A");
+
 		template< typename... ARGS >
     void error( const char* formatStr, const ARGS& ... args ) {
     	write(ERROR,formatStr, args...);
