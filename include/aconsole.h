@@ -63,6 +63,29 @@ class Console {
 
 		void time() {}
 		void timeEnd() {}
+		
+		//{ NODE.JS COMPATIBILITY HELPERS
+		template< typename... ARGS >
+    void error( const char* formatStr, const ARGS& ... args ) {
+    	write(ERROR,formatStr, args...);
+		}
+		template< typename... ARGS >
+    void info( const char* formatStr, const ARGS& ... args ) {
+    	write(INFO,formatStr, args...);
+		}
+		template< typename... ARGS >
+    void log( const char* formatStr, const ARGS& ... args ) {
+    	write(INFO,formatStr, args...);
+		}
+		template< typename... ARGS >
+    void trace( const char* formatStr, const ARGS& ... args ) {
+    	write(TRACE,formatStr, args...);
+		}
+		template< typename... ARGS >
+    void warn( const char* formatStr, const ARGS& ... args ) {
+    	write(WARN,formatStr, args...);
+		}
+		//} NODE.JS COMPATIBILITY HELPERS
 	};
 
 class DefaultConsole : public Console
@@ -191,6 +214,29 @@ class FileConsole : public Console
 				consolePtr = nullptr;
 			}
 		}
+
+		//{ NODE.JS COMPATIBILITY HELPERS
+		template< typename... ARGS >
+    void error( const char* formatStr, const ARGS& ... args ) {
+    	consolePtr->error(formatStr, args...);
+		}
+		template< typename... ARGS >
+    void info( const char* formatStr, const ARGS& ... args ) {
+    	consolePtr->info(formatStr, args...);
+		}
+		template< typename... ARGS >
+    void log( const char* formatStr, const ARGS& ... args ) {
+    	consolePtr->log(formatStr, args...);
+		}
+		template< typename... ARGS >
+    void trace( const char* formatStr, const ARGS& ... args ) {
+    	consolePtr->trace(formatStr, args...);
+		}
+		template< typename... ARGS >
+    void warn( const char* formatStr, const ARGS& ... args ) {
+    	consolePtr->warn(formatStr, args...);
+		}
+		//} NODE.JS COMPATIBILITY HELPERS
 		
 		private:
 		void _ensureInit() {
