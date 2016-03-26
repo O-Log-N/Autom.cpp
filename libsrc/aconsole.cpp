@@ -17,7 +17,7 @@ Copyright (C) 2016 OLogN Technologies AG
 namespace autom {
 ConsoleWrapper console;
 
-//NB: We have to duplicate messages as MSVC doesn't support single-parameter static_assert() :-(
+//NB: MSVC doesn't support single-parameter static_assert() :-(
 static_assert(Console::TRACE==0,"Console::TRACE==0");
 static_assert(Console::INFO==1,"Console::INFO==1");
 static_assert(Console::NOTICE==2,"Console::NOTICE==2");
