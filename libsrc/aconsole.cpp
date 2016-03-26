@@ -97,6 +97,7 @@ void Console::timeEnd(Console::TimeLabel label, const char* text) {
 	//} adding item 'idx' to single-linked list
 }
 
+#ifndef ASTRIP_NODEJS_COMPAT
 //{ NODE.JS COMPATIBILITY HELPERS
 void Console::time(const char* label) {
 	auto it = njTimes.insert(std::unordered_map<std::string,std::chrono::time_point>::value_type(label,0)).first;
@@ -118,5 +119,6 @@ void Console::timeEnd(const char* label) {
 	njTimes.erase(found);
 }
 //} NODE.JS COMPATIBILITY HELPERS
+#endif
 
 }//namespace autom
