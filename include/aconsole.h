@@ -34,10 +34,10 @@ static_assert( ATRACE_LVL_DEFAULT <= ATRACE_LVL_MAX, "ATRACE_LVL_DEFAULT <= ATRA
 namespace autom
 {
 class Console {
-		int softTraceLevel = ATRACE_LVL_DEFAULT;
-		int nMessages = 0;
+    int softTraceLevel = ATRACE_LVL_DEFAULT;
+    int nMessages = 0;
 
-	public:
+public:
     enum class TraceLevel : int
     {
         TRACE0 = 0, TRACE1, TRACE2, TRACE3, TRACE4,
@@ -46,31 +46,31 @@ class Console {
 
     virtual void formattedTrace( TraceLevel lvl, const char* s ) = 0;
     virtual ~Console() {
-		}
+    }
 
     int traceLevel() const {
         return softTraceLevel;
-		}
+    }
     int messageCount() const {
         return nMessages;
-		}
+    }
 
-		template< typename... ARGS >
+    template< typename... ARGS >
     void trace( TraceLevel lvl, const char* formatStr, const ARGS& ... args ) {
-			std::string s = fmt::format( formatStr, args... );
-			++nMessages;
+        std::string s = fmt::format( formatStr, args... );
+        ++nMessages;
         formattedTrace(lvl,s.c_str());
-		}
+    }
 
-		void time() {}
-		void timeEnd() {}
-	};
+    void time() {}
+    void timeEnd() {}
+};
 
 class DefaultConsole : public Console
 {
     const char* traceMarker( TraceLevel lvl ) const {
         switch( lvl )
-	{
+        {
         case TraceLevel::INFO:
             return "INFO";
         case TraceLevel::NOTICE:
@@ -84,19 +84,19 @@ class DefaultConsole : public Console
         case TraceLevel::ALERT:
             return "ALERT";
         default:
-            return "";
-		}
-		}
+            return "#";
+        }
+    }
 
 public:
     void formattedTrace( TraceLevel lvl, const char* s ) override {
         fmt::print(std::cout,"{}: {}\n",traceMarker(lvl),s);
-		}
-	};
-	
+    }
+};
+
 class FileConsole : public Console
-	{
-		std::ostream& os;
+{
+    std::ostream& os;
 
     const char* traceMarker( TraceLevel lvl ) const {
         switch( lvl )
@@ -128,85 +128,85 @@ class FileConsole : public Console
         }
     }
 
-	public:
-		FileConsole(std::ostream& os_)
-		: os(os_) {
-		}
+public:
+    FileConsole(std::ostream& os_)
+        : os(os_) {
+    }
 
     void formattedTrace( TraceLevel lvl, const char* s ) override {
         fmt::print(os,"{}: {}\n",traceMarker( lvl ),s);
-		}
-	};
+    }
+};
 
-	class ConsoleWrapper
-	{
+class ConsoleWrapper
+{
     Console* consolePtr = nullptr;
-			//we're NOT using std::unique_ptr<> here
-			//  to guarantee that for a global ConsoleWrapper
-			//  consolePtr is set before ANY global object constructor is called
-		int prevConsolesMessages = 0;//as in 'messages to previous consoles'
-		bool forever = false;
+    //we're NOT using std::unique_ptr<> here
+    //  to guarantee that for a global ConsoleWrapper
+    //  consolePtr is set before ANY global object constructor is called
+    int prevConsolesMessages = 0;//as in 'messages to previous consoles'
+    bool forever = false;
 
-	public:
-		ConsoleWrapper() {
-			//it is IMPORTANT to have this constructor even though all the functions
-			//  account for consolePtr possible being nullptr
-			//This constructor guarantees that before main() we have the consolePtr valid,
-			//  and that therefore no issues can arise due to multithreading
-			//  (except when assignNewConsole() is explicitly called)
-			_ensureInit();
-		}
+public:
+    ConsoleWrapper() {
+        //it is IMPORTANT to have this constructor even though all the functions
+        //  account for consolePtr possible being nullptr
+        //This constructor guarantees that before main() we have the consolePtr valid,
+        //  and that therefore no issues can arise due to multithreading
+        //  (except when assignNewConsole() is explicitly called)
+        _ensureInit();
+    }
     void assignNewConsole( std::unique_ptr<Console> newConsole ) {
-			int nMsg = 0;
-			if(consolePtr) {
-				nMsg = consolePtr->messageCount();
-				delete consolePtr;
-			}
-			
-			consolePtr = newConsole.release();
-			prevConsolesMessages += nMsg;
-			if( prevConsolesMessages )
+        int nMsg = 0;
+        if(consolePtr) {
+            nMsg = consolePtr->messageCount();
+            delete consolePtr; // TODO: if( ! forever )
+        }
+
+        consolePtr = newConsole.release();
+        prevConsolesMessages += nMsg;
+        if( prevConsolesMessages )
             consolePtr->trace( Console::TraceLevel::INFO, "autom::ConsoleWrapper::assignNewConsole(): {0} message(s) has been sent to previous Console(s)", prevConsolesMessages );
-		}
-		void rtfmKeepForever()
-		//CAUTION: this function MAY cause memory leaks when used on non-GLOBAL objects
-		//  on GLOBAL objects it is fine, and MAY be useful
-		//  to allow tracing within global destructors
-		//  without worrying about global destructor call order
-		{
-			forever = true;
-		}
+    }
+    void rtfmKeepForever()
+    //CAUTION: this function MAY cause memory leaks when used on non-GLOBAL objects
+    //  on GLOBAL objects it is fine, and MAY be useful
+    //  to allow tracing within global destructors
+    //  without worrying about global destructor call order
+    {
+        forever = true;
+    }
 
     int traceLevel()
-		{
-			_ensureInit();
-			return consolePtr->traceLevel();
-		}
+    {
+        _ensureInit();
+        return consolePtr->traceLevel();
+    }
 
-		template< typename... ARGS >
+    template< typename... ARGS >
     void trace( Console::TraceLevel lvl, const char* formatStr, const ARGS& ... args )
-		{
-			_ensureInit();
+    {
+        _ensureInit();
         consolePtr->trace( lvl, formatStr, args... );
-		}
-		
-		ConsoleWrapper( const ConsoleWrapper& ) = delete;
-		ConsoleWrapper& operator =( const ConsoleWrapper& ) = delete;
-		~ConsoleWrapper() {
-			if(consolePtr && !forever) {
-				delete consolePtr;
-				consolePtr = nullptr;
-			}
-		}
-		
-		private:
-		void _ensureInit() {
-			if(!consolePtr)
-				consolePtr = new DefaultConsole();
-		}
-	};
-	
-	extern ConsoleWrapper console;
+    }
+
+    ConsoleWrapper( const ConsoleWrapper& ) = delete;
+    ConsoleWrapper& operator =( const ConsoleWrapper& ) = delete;
+    ~ConsoleWrapper() {
+        if(consolePtr && !forever) {
+            delete consolePtr;
+            consolePtr = nullptr;
+        }
+    }
+
+private:
+    void _ensureInit() {
+        if(!consolePtr)
+            consolePtr = new DefaultConsole();
+    }
+};
+
+extern ConsoleWrapper console;
 }
 
 #if ( ATRACE_LVL_MAX >= 4 )
