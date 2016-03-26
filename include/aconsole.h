@@ -56,7 +56,7 @@ class Console {
 		};
 		
 		int softTraceLevel = ATRACE_LVL_DEFAULT;
-		int nMessages = 0;
+		int nMessages = 0;//statistics-only; NON-STRICT in MT environments
 		size_t firstFreeATime = ATIMENONE;
 		std::vector<PrivateATimeStoredType> aTimes;//for Autom-style timeWithLabel()/timeEnd()
 							   //'sparse' vector with firstFreeATime forming single-linked list
