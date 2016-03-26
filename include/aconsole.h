@@ -61,8 +61,9 @@ class Console {
 		std::vector<PrivateATimeStoredType> aTimes;//for Autom-style timeWithLabel()/timeEnd()
 							   //'sparse' vector with firstFreeATime forming single-linked list
 							   //in nextFree items
+#ifndef ASTRIP_NODEJS_COMPAT
 		std::unordered_map<std::string,std::chrono::time_point> njTimes;
-    
+#endif    
 	public:
     virtual void formattedWrite( WRITELEVEL lvl, const char* s ) = 0;
     virtual ~Console() {
@@ -89,6 +90,7 @@ class Console {
 		//... code to be benchmarked
 		//timeEnd(label,"My Time Label A");
 
+#ifndef ASTRIP_NODEJS_COMPAT
 		//{ NODE.JS COMPATIBILITY HELPERS
 		void time(const char* label);
 		void timeEnd(const char* label);
@@ -119,6 +121,7 @@ class Console {
     	write(WARN,formatStr, args...);
 		}
 		//} NODE.JS COMPATIBILITY HELPERS
+#endif
 	};
 
 class DefaultConsole : public Console
@@ -200,8 +203,27 @@ class FileConsole : public Console
 				                     //  outlive its own destructor
 			}
 		}
+		
+		Console::TimeLabel timeWithLabel() {
+			_ensureInit();
+			return consolePtr->timeWithLabel();
+		}
+		void timeEnd(Console::TimeLabel label, const char* text){
+			_ensureInit();
+			consolePtr->timeEnd(label, text);
+		}
 
+#ifndef ASTRIP_NODEJS_COMPAT
 		//{ NODE.JS COMPATIBILITY HELPERS
+		void time(const char* label) {
+			_ensureInit();
+			consolePtr->time(label);
+		}
+		void timeEnd(const char* label) {
+			_ensureInit();
+			consolePtr->timeEnd(label);
+		}
+
 		template< typename... ARGS >
     void error( const char* formatStr, const ARGS& ... args ) {
     	consolePtr->error(formatStr, args...);
@@ -223,6 +245,7 @@ class FileConsole : public Console
     	consolePtr->warn(formatStr, args...);
 		}
 		//} NODE.JS COMPATIBILITY HELPERS
+#endif
 		
 		private:
 		void _ensureInit() {
