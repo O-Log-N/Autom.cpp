@@ -22,12 +22,16 @@ Copyright (C) 2016 OLogN Technologies AG
 #ifndef ATRACE_LVL_MAX
 #define ATRACE_LVL_MAX 4 // Compile time max trace level
 #endif
+
+//NB: MSVC doesn't support single-parameter static_assert() :-(
 static_assert( ATRACE_LVL_MAX >= 0, "ATRACE_LVL_MAX >= 0" );
 static_assert( ATRACE_LVL_MAX <= 4, "ATRACE_LVL_MAX <= 4" );
 
 #ifndef ATRACE_LVL_DEFAULT
 #define ATRACE_LVL_DEFAULT 2 // Default value for runtime trace level
 #endif
+
+//NB: MSVC doesn't support single-parameter static_assert() :-(
 static_assert( ATRACE_LVL_DEFAULT >= 0, "ATRACE_LVL_DEFAULT >= 0" );
 static_assert( ATRACE_LVL_DEFAULT <= ATRACE_LVL_MAX, "ATRACE_LVL_DEFAULT <= ATRACE_LVL_MAX" );
 
