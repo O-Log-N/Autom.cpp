@@ -12,8 +12,8 @@ Copyright (C) 2016 OLogN Technologies AG
 	51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 *******************************************************************************/
 
-#include "aconsole.h"
+#include "../include/aconsole.h"
 
 namespace autom {
-	ConsoleWrapper console;
+ConsoleWrapper console;
 }
