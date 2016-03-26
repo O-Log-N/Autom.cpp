@@ -71,7 +71,7 @@ Console::TimeLabel Console::timeWithLabel() {
 	size_t idx = firstFreeATime;
 	auto& item = aTimes[idx];
 	
-	//{ removing first item from single-linked list
+	//removing first item from single-linked list
 	firstFreeATime = item.nextFree;
 	
 	item.nextFree = ATIMENONE;
