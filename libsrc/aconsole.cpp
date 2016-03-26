@@ -58,4 +58,26 @@ void FileConsole::formattedWrite( WRITELEVEL lvl, const char* s ) override {
 	}
 }
 
+//{ NODE.JS COMPATIBILITY HELPERS
+void Console::time(const char* label) {
+	auto it = njTimes.insert(std::unordered_map<std::string,std::chrono::time_point>::value_type(label,0)).first;
+	//moved now() after insert to avoid measuring time of insert()
+	std::chrono::time_point now = std::chrono::high_resolution_clock::now();
+	(*it).second = now;
+}
+void Console::timeEnd(const char* label) {
+	//calculating now() right here, to avoid measuring find() function
+	std::chrono::time_point now = std::chrono::high_resolution_clock::now();
+	
+	auto found = njTimes.find(label);
+	if(found == njTimes.end()) {
+		write(ERROR,"Console::timeEnd(): unknown label '{}'", label);
+		return;
+	}
+	
+	write(INFO,"Console::timeEnd('{}'): {}", label, now - (*found).second);
+	njTimes.erase(found);
+}
+//} NODE.JS COMPATIBILITY HELPERS
+
 }//namespace autom
