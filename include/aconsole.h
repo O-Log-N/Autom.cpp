@@ -38,13 +38,12 @@ class Console {
 		int nMessages = 0;
 
 	public:
-    enum class TraceLevel : int
+    enum WRITELEVEL //NOT using enum class here to enable shorter console.write(Console::INFO,...);
     {
-        TRACE0 = 0, TRACE1, TRACE2, TRACE3, TRACE4,
-        INFO, NOTICE, WARN, ERROR, CRITICAL, ALERT
+        TRACE = 0, INFO = 1, NOTICE = 2, WARN = 3, ERROR = 4, CRITICAL = 5, ALERT = 6
     };
 
-    virtual void formattedTrace( TraceLevel lvl, const char* s ) = 0;
+    virtual void formattedWrite( WRITELEVEL lvl, const char* s ) = 0;
     virtual ~Console() {
 		}
 
@@ -56,10 +55,10 @@ class Console {
 		}
 
 		template< typename... ARGS >
-    void trace( TraceLevel lvl, const char* formatStr, const ARGS& ... args ) {
+    void write( WRITELEVEL lvl, const char* formatStr, const ARGS& ... args ) {
 			std::string s = fmt::format( formatStr, args... );
 			++nMessages;
-        formattedTrace(lvl,s.c_str());
+        formattedWrite(lvl,s.c_str());
 		}
 
 		void time() {}
@@ -68,29 +67,31 @@ class Console {
 
 class DefaultConsole : public Console
 {
-    const char* traceMarker( TraceLevel lvl ) const {
+    const char* _traceMarker( WRITELEVEL lvl ) const {
         switch( lvl )
 	{
-        case TraceLevel::INFO:
+        case TRACE:
+            return "TRACE";
+        case INFO:
             return "INFO";
-        case TraceLevel::NOTICE:
+        case NOTICE:
             return "NOTICE";
-        case TraceLevel::WARN:
+        case WARN:
             return "WARN";
-        case TraceLevel::ERROR:
+        case ERROR:
             return "ERROR";
-        case TraceLevel::CRITICAL:
+        case CRITICAL:
             return "CRITICAL";
-        case TraceLevel::ALERT:
+        case ALERT:
             return "ALERT";
         default:
-            return "";
-		}
-		}
+            assert(false);//TODO: HAREASSERT
+	}
+	}
 
 public:
-    void formattedTrace( TraceLevel lvl, const char* s ) override {
-        fmt::print(std::cout,"{}: {}\n",traceMarker(lvl),s);
+    void formattedWrite( WRITELEVEL lvl, const char* s ) override {
+        fmt::print(std::cout,"{}: {}\n",_traceMarker(lvl),s);
 		}
 	};
 	
@@ -98,33 +99,25 @@ class FileConsole : public Console
 	{
 		std::ostream& os;
 
-    const char* traceMarker( TraceLevel lvl ) const {
+    const char* _traceMarker( WRITELEVEL lvl ) const {
         switch( lvl )
         {
-        case TraceLevel::TRACE0:
-            return "T0";
-        case TraceLevel::TRACE1:
-            return "T1";
-        case TraceLevel::TRACE2:
-            return "T2";
-        case TraceLevel::TRACE3:
-            return "T3";
-        case TraceLevel::TRACE4:
-            return "T4";
-        case TraceLevel::INFO:
+        case TRACE:
+            return "TRACE";
+        case INFO:
             return "INFO";
-        case TraceLevel::NOTICE:
+        case NOTICE:
             return "NOTICE";
-        case TraceLevel::WARN:
+        case WARN:
             return "WARN";
-        case TraceLevel::ERROR:
+        case ERROR:
             return "ERROR";
-        case TraceLevel::CRITICAL:
+        case CRITICAL:
             return "CRITICAL";
-        case TraceLevel::ALERT:
+        case ALERT:
             return "ALERT";
         default:
-            return "";
+            assert(false);//TODO: HAREASSERT
         }
     }
 
@@ -133,7 +126,7 @@ class FileConsole : public Console
 		: os(os_) {
 		}
 
-    void formattedTrace( TraceLevel lvl, const char* s ) override {
+    void formattedWrite( WRITELEVEL lvl, const char* s ) override {
         fmt::print(os,"{}: {}\n",traceMarker( lvl ),s);
 		}
 	};
@@ -166,7 +159,7 @@ class FileConsole : public Console
 			consolePtr = newConsole.release();
 			prevConsolesMessages += nMsg;
 			if( prevConsolesMessages )
-            consolePtr->trace( Console::TraceLevel::INFO, "autom::ConsoleWrapper::assignNewConsole(): {0} message(s) has been sent to previous Console(s)", prevConsolesMessages );
+            consolePtr->write( Console::INFO, "autom::ConsoleWrapper::assignNewConsole(): {0} message(s) has been sent to previous Console(s)", prevConsolesMessages );
 		}
 		void rtfmKeepForever()
 		//CAUTION: this function MAY cause memory leaks when used on non-GLOBAL objects
@@ -184,10 +177,10 @@ class FileConsole : public Console
 		}
 
 		template< typename... ARGS >
-    void trace( Console::TraceLevel lvl, const char* formatStr, const ARGS& ... args )
+    void write( Console::WRITELEVEL lvl, const char* formatStr, const ARGS& ... args )
 		{
 			_ensureInit();
-        consolePtr->trace( lvl, formatStr, args... );
+        consolePtr->write( lvl, formatStr, args... );
 		}
 		
 		ConsoleWrapper( const ConsoleWrapper& ) = delete;
@@ -213,7 +206,7 @@ class FileConsole : public Console
 #define ATRACE4(...)\
 do {\
 	if(console.traceLevel()>=4)\
-		console.trace(autom::Console::TraceLevel::TRACE4,__VA_ARGS__);\
+		autom::console.write(autom::Console::TRACE,__VA_ARGS__);\
 	} while(0)
 #else
 #define ATRACE4(...)
@@ -223,7 +216,7 @@ do {\
 #define ATRACE3(...)\
 do {\
 	if(console.traceLevel()>=3)\
-		console.trace(autom::Console::TraceLevel::TRACE3,__VA_ARGS__);\
+		autom::console.write(autom::Console::TRACE,__VA_ARGS__);\
 	} while(0)
 #else
 #define ATRACE3(...)
@@ -233,7 +226,7 @@ do {\
 #define ATRACE2(...)\
 do {\
 	if(console.traceLevel()>=2)\
-		console.trace(autom::Console::TraceLevel::TRACE2,__VA_ARGS__);\
+		autom::console.write(autom::Console::TRACE,__VA_ARGS__);\
 	} while(0)
 #else
 #define ATRACE2(...)
@@ -243,7 +236,7 @@ do {\
 #define ATRACE1(...)\
 do {\
 	if(console.traceLevel()>=1)\
-		console.trace(autom::Console::TraceLevel::TRACE1,__VA_ARGS__);\
+		autom::console.write(autom::Console::TRACE,__VA_ARGS__);\
 	} while(0)
 #else
 #define ATRACE1(...)
@@ -252,7 +245,7 @@ do {\
 #define ATRACE0(...)\
 do {\
 	if(console.traceLevel()>=0)\
-		console.trace(autom::Console::TraceLevel::TRACE0,__VA_ARGS__);\
+		autom::console.write(autom::Console::TRACE,__VA_ARGS__);\
 	} while(0)
 
 #endif
