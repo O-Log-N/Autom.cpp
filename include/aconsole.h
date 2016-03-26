@@ -90,68 +90,20 @@ class Console {
 
 class DefaultConsole : public Console
 {
-    const char* _traceMarker( WRITELEVEL lvl ) const {
-        switch( lvl )
-	{
-        case TRACE:
-            return "TRACE";
-        case INFO:
-            return "INFO";
-        case NOTICE:
-            return "NOTICE";
-        case WARN:
-            return "WARN";
-        case ERROR:
-            return "ERROR";
-        case CRITICAL:
-            return "CRITICAL";
-        case ALERT:
-            return "ALERT";
-        default:
-            assert(false);//TODO: HAREASSERT
-	}
-	}
-
 public:
-    void formattedWrite( WRITELEVEL lvl, const char* s ) override {
-        fmt::print(lvl >= ERROR ? std::cerr : std::cout,"{}: {}\n",_traceMarker(lvl),s);
-		}
+    void formattedWrite( WRITELEVEL lvl, const char* s ) override;
 	};
 	
 class FileConsole : public Console
 	{
 		std::ostream& os;
 
-    const char* _traceMarker( WRITELEVEL lvl ) const {
-        switch( lvl )
-        {
-        case TRACE:
-            return "TRACE";
-        case INFO:
-            return "INFO";
-        case NOTICE:
-            return "NOTICE";
-        case WARN:
-            return "WARN";
-        case ERROR:
-            return "ERROR";
-        case CRITICAL:
-            return "CRITICAL";
-        case ALERT:
-            return "ALERT";
-        default:
-            assert(false);//TODO: HAREASSERT
-        }
-    }
-
 	public:
 		FileConsole(std::ostream& os_)
 		: os(os_) {
 		}
 
-    void formattedWrite( WRITELEVEL lvl, const char* s ) override {
-        fmt::print(os,"{}: {}\n",traceMarker( lvl ),s);
-		}
+    void formattedWrite( WRITELEVEL lvl, const char* s ) override;
 	};
 
 	class ConsoleWrapper
