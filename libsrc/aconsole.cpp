@@ -40,7 +40,7 @@ static const char* defaultFmtStrings[] = {
 
 void DefaultConsole::formattedWrite( WRITELEVEL lvl, const char* s ) override {
 	//AASSERT() is probably way too harsh here
-	if(lvl >= 0 && lvl <= sizeof(defaultFmtStrings)/sizeof(defaultFmtStrings[0]))
+	if(lvl >= 0 && lvl < sizeof(defaultFmtStrings)/sizeof(defaultFmtStrings[0]))
 	        fmt::print(lvl >= ERROR ? std::cerr : std::cout, defaultFmtStrings[lvl], s);
 	else {
 		fmt::print(std::cerr, "ERROR: DefaultConsole::formattedWrite(): unknown lvl={}, forced to ERROR:\n", lvl);
@@ -50,7 +50,7 @@ void DefaultConsole::formattedWrite( WRITELEVEL lvl, const char* s ) override {
 
 void FileConsole::formattedWrite( WRITELEVEL lvl, const char* s ) override {
 	//AASSERT() is probably way too harsh here
-	if(lvl >= 0 && lvl <= sizeof(defaultFmtStrings)/sizeof(defaultFmtStrings[0]))
+	if(lvl >= 0 && lvl < sizeof(defaultFmtStrings)/sizeof(defaultFmtStrings[0]))
 	        fmt::print(os, defaultFmtStrings[lvl], s);
 	else {
 		fmt::print(os, "ERROR: DefaultConsole::formattedWrite(): unknown lvl={}, forced to ERROR:\n", lvl);
