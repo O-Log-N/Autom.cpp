@@ -91,7 +91,7 @@ class DefaultConsole : public Console
 
 public:
     void formattedWrite( WRITELEVEL lvl, const char* s ) override {
-        fmt::print(std::cout,"{}: {}\n",_traceMarker(lvl),s);
+        fmt::print(lvl >= ERROR ? std::cerr : std::cout,"{}: {}\n",_traceMarker(lvl),s);
 		}
 	};
 	
