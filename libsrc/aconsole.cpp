@@ -58,6 +58,45 @@ void FileConsole::formattedWrite( WRITELEVEL lvl, const char* s ) override {
 	}
 }
 
+Console::TimeLabel Console::timeWithLabel() {
+	if(firstFreeATime == ATIMENONE) {
+		auto it = aTimes.insert(aTimes.end(),PrivateATimeStoredType());
+		//moved now() after insert to avoid measuring time of insert()
+		std::chrono::time_point now = std::chrono::high_resolution_clock::now();
+		(*it).began = now;
+		return TimeLabel(it - aTimes.begin());
+	}
+	
+	assert(firstFreeATime < aTimes.size());//TODO!: remove assert (see Console::time())
+	size_t idx = firstFreeATime;
+	auto& item = aTimes[idx];
+	
+	//{ removing first item from single-linked list
+	firstFreeATime = item.nextFree;
+	
+	item.nextFree = ATIMENONE;
+	std::chrono::time_point now = std::chrono::high_resolution_clock::now();
+	item.began = now;
+	return TimeLabel(idx);
+}
+
+void Console::timeEnd(Console::TimeLabel label, const char* text) {
+	//calculating now() right here, to avoid measuring find() function
+	std::chrono::time_point now = std::chrono::high_resolution_clock::now();
+
+	size_t idx = label.idx;
+	assert(idx < aTimes.size());//TODO!: remove assert (see Console::time())
+	auto& item = aTimes[idx];
+	assert(item.nextFree == ATIMENONE);//TODO: AASSERT() or remove?
+
+	write(INFO,"Console::timeEnd('{}'): {}", text, now - item.began);
+	
+	//{ adding item 'idx' to single-linked list
+	item.nextFree = firstFreeATime;
+	firstFreeATime = idx;
+	//} adding item 'idx' to single-linked list
+}
+
 //{ NODE.JS COMPATIBILITY HELPERS
 void Console::time(const char* label) {
 	auto it = njTimes.insert(std::unordered_map<std::string,std::chrono::time_point>::value_type(label,0)).first;
