@@ -15,4 +15,29 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #ifndef AASSERT_H
 #define AASSERT_H
 
+#include "../3rdparty/cppformat/cppformat/format.h"
+
+#include <exception>
+#include <string>
+
+namespace autom
+{
+class AssertionError : public std::exception
+{
+    std::string longMessage;
+
+public:
+    template< typename... ARGS >
+    AssertionError( const char* cond_, const char* file_, int line_, const char* msg_, const ARGS& ... args ) {
+        longMessage = fmt::format( "Assertion {} failed, file {}, line {} ", cond_, file_, line_ );
+        longMessage.append( fmt::format( msg_, args... ) );
+    }
+
+    const char* what() const override
+    {
+        return longMessage.c_str();
+    }
+};
+}
+
 #endif
