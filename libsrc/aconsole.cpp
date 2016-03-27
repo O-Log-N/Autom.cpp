@@ -100,7 +100,7 @@ void Console::timeEnd(Console::TimeLabel label, const char* text) {
 #ifndef ASTRIP_NODEJS_COMPAT
 //{ NODE.JS COMPATIBILITY HELPERS
 void Console::time(const char* label) {
-    auto it = njTimes.insert(std::make_pair(label, std::chrono::time_point<std::chrono::high_resolution_clock>())).first; // TODO: check 0 init in time_point def ctor
+    auto it = njTimes.insert(std::unordered_map<std::string, std::chrono::time_point<std::chrono::high_resolution_clock>>::value_type(label, std::chrono::time_point<std::chrono::high_resolution_clock>())).first; // TODO: check 0 init in time_point def ctor
     //moved now() after insert to avoid measuring time of insert()
     std::chrono::time_point<std::chrono::high_resolution_clock> now = std::chrono::high_resolution_clock::now();
     (*it).second = now;
