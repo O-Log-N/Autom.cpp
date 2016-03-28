@@ -40,6 +40,9 @@ static_assert( ATRACE_LVL_DEFAULT <= ATRACE_LVL_MAX, "ATRACE_LVL_DEFAULT <= ATRA
 namespace autom
 {
 class Console {
+	//Note for Infrastructure-level Developers:
+	//  Console as such is thread-agnostic
+	//  ALL the thread sync is a responsibility of 'wrappers'
 public:
     enum WRITELEVEL //NOT using enum class here to enable shorter console.write(Console::INFO,...);
     {
@@ -146,25 +149,28 @@ public:
     void formattedWrite( WRITELEVEL lvl, const char* s ) override;
 };
 
-class ConsoleWrapper
+class InfraConsoleWrapper
 {
     Console* consolePtr = nullptr;
     //we're NOT using std::unique_ptr<> here
-    //  to guarantee that for a global ConsoleWrapper
+    //  to guarantee that for a global InfraConsoleWrapper
     //  consolePtr is set before ANY global object constructor is called
     int prevConsolesMessages = 0;//as in 'messages to previous consoles'
     bool forever = false;
+    std::mutex mx;//TODO!: to be moved to pimpl (as a separate issue)
 
 public:
-    ConsoleWrapper() {
+    InfraConsoleWrapper() {
         //it is IMPORTANT to have this constructor even though all the functions
         //  account for consolePtr possible being nullptr
         //This constructor guarantees that before main() we have the consolePtr valid,
         //  and that therefore no issues can arise due to multithreading
         //  (except when assignNewConsole() is explicitly called)
+        std::lock_guard<std::mutex> lock(mx);//for the same reason as above - calls before being destoyed
         _ensureInit();
     }
     void assignNewConsole( std::unique_ptr<Console> newConsole ) {
+    	std::lock_guard<std::mutex> lock(mx);
         int nMsg = 0;
         if(consolePtr) {
             nMsg = consolePtr->messageCount();
@@ -174,7 +180,7 @@ public:
         consolePtr = newConsole.release();
         prevConsolesMessages += nMsg;
         if( prevConsolesMessages )
-            consolePtr->write( Console::INFO, "autom::ConsoleWrapper::assignNewConsole(): {0} message(s) has been sent to previous Console(s)", prevConsolesMessages );
+            consolePtr->write( Console::INFO, "autom::InfraConsoleWrapper::assignNewConsole(): {0} message(s) has been sent to previous Console(s)", prevConsolesMessages );
     }
     void rtfmKeepForever()
     //CAUTION: this function MAY cause memory leaks when used on non-GLOBAL objects
@@ -182,37 +188,49 @@ public:
     //  to allow tracing within global destructors
     //  without worrying about global destructor call order
     {
+    	std::lock_guard<std::mutex> lock(mx);
         forever = true;
     }
 
     int traceLevel()
     {
-        _ensureInit();
+	std::lock_guard<std::mutex> lock(mx);
+	_ensureInit();
         return consolePtr->traceLevel();
     }
 
     template< typename... ARGS >
     void write( Console::WRITELEVEL lvl, const char* formatStr, const ARGS& ... args )
     {
+    	std::lock_guard<std::mutex> lock(mx);
         _ensureInit();
         consolePtr->write( lvl, formatStr, args... );
     }
+    
+    void formattedWrite( WRITELEVEL lvl, const char* s ) {
+        std::lock_guard<std::mutex> lock(mx);
+        _ensureInit();
+        consolePtr->formattedWrite(lvl, s);
+    }
 
-    ConsoleWrapper( const ConsoleWrapper& ) = delete;
-    ConsoleWrapper& operator =( const ConsoleWrapper& ) = delete;
-    ~ConsoleWrapper() {
+    InfraConsoleWrapper( const InfraConsoleWrapper& ) = delete;
+    InfraConsoleWrapper& operator =( const InfraConsoleWrapper& ) = delete;
+    ~InfraConsoleWrapper() {
+    	std::lock_guard<std::mutex> lock(mx);//doesn't really make sense, but reduces vulnerability window a bit
         if(consolePtr && !forever) {
             delete consolePtr;
-            consolePtr = nullptr;//important here as global ConsoleWrapper MAY
+            consolePtr = nullptr;//important here as global InfraConsoleWrapper MAY
             //  outlive its own destructor
         }
     }
 
     Console::TimeLabel timeWithLabel() {
+        std::lock_guard<std::mutex> lock(mx);
         _ensureInit();
         return consolePtr->timeWithLabel();
     }
     void timeEnd(Console::TimeLabel label, const char* text) {
+    	std::lock_guard<std::mutex> lock(mx);
         _ensureInit();
         consolePtr->timeEnd(label, text);
     }
@@ -220,11 +238,102 @@ public:
 #ifndef ASTRIP_NODEJS_COMPAT
     //{ NODE.JS COMPATIBILITY HELPERS
     void time(const char* label) {
+    	std::lock_guard<std::mutex> lock(mx);
         _ensureInit();
         consolePtr->time(label);
     }
     void timeEnd(const char* label) {
+    	std::lock_guard<std::mutex> lock(mx);
         _ensureInit();
+        consolePtr->timeEnd(label);
+    }
+
+    template< typename... ARGS >
+    void error( const char* formatStr, const ARGS& ... args ) {
+        std::lock_guard<std::mutex> lock(mx);
+        consolePtr->error(formatStr, args...);
+    }
+    template< typename... ARGS >
+    void info( const char* formatStr, const ARGS& ... args ) {
+    	std::lock_guard<std::mutex> lock(mx);
+        consolePtr->info(formatStr, args...);
+    }
+    template< typename... ARGS >
+    void log( const char* formatStr, const ARGS& ... args ) {
+    	std::lock_guard<std::mutex> lock(mx);
+        consolePtr->log(formatStr, args...);
+    }
+    template< typename... ARGS >
+    void trace( const char* formatStr, const ARGS& ... args ) {
+    	std::lock_guard<std::mutex> lock(mx);
+        consolePtr->trace(formatStr, args...);
+    }
+    template< typename... ARGS >
+    void warn( const char* formatStr, const ARGS& ... args ) {
+    	std::lock_guard<std::mutex> lock(mx);
+        consolePtr->warn(formatStr, args...);
+    }
+    //} NODE.JS COMPATIBILITY HELPERS
+#endif
+
+private:
+    void _ensureInit() {
+        if(!consolePtr)
+            consolePtr = new DefaultConsole();
+    }
+};
+
+extern InfraConsoleWrapper infraConsole;
+
+class NodeConsole : public Console {
+public:
+    void formattedWrite( WRITELEVEL lvl, const char* s ) override {
+    	infraConsole.formattedWrite( lvl, s );
+    }
+};
+
+class NodeConsoleWrapper
+{
+    //per-object Console wrapper
+    std::unique_ptr<Console> consolePtr;
+
+public:
+    NodeConsoleWrapper() {
+    	consolePtr = new NodeConsole();
+    }
+    void assignNewConsole( std::unique_ptr<Console> newConsole ) {
+    	consolePtr = newConsole;
+    }
+
+    int traceLevel()
+    {
+        return consolePtr->traceLevel();
+    }
+
+    template< typename... ARGS >
+    void write( Console::WRITELEVEL lvl, const char* formatStr, const ARGS& ... args )
+    {
+        consolePtr->write( lvl, formatStr, args... );
+    }
+
+    NodeConsoleWrapper( const NodeConsoleWrapper& ) = delete;
+    NodeConsoleWrapper& operator =( const NodeConsoleWrapper& ) = delete;
+    ~NodeConsoleWrapper() {
+    }
+
+    Console::TimeLabel timeWithLabel() {
+        return consolePtr->timeWithLabel();
+    }
+    void timeEnd(Console::TimeLabel label, const char* text) {
+        consolePtr->timeEnd(label, text);
+    }
+
+#ifndef ASTRIP_NODEJS_COMPAT
+    //{ NODE.JS COMPATIBILITY HELPERS
+    void time(const char* label) {
+        consolePtr->time(label);
+    }
+    void timeEnd(const char* label) {
         consolePtr->timeEnd(label);
     }
 
@@ -250,15 +359,8 @@ public:
     }
     //} NODE.JS COMPATIBILITY HELPERS
 #endif
-
-private:
-    void _ensureInit() {
-        if(!consolePtr)
-            consolePtr = new DefaultConsole();
     }
 };
-
-extern ConsoleWrapper console;
 }
 
 #if ( ATRACE_LVL_MAX >= 4 )
