@@ -83,6 +83,7 @@ Naming conventions examples:
 11. SHOULD use C++11 member initializers over constructors for 'member default' values 
 12. noexcept use is DISCOURAGED except for moving constructors.
 13. SHOULD use nullptr over NULL
+14. when adding to `map<>`, SHOULD use `map<...>::value_type(...)` over `std::make_pair()` (see http://stackoverflow.com/questions/17172080/insert-vs-emplace-vs-operator-in-c-map for rationale)
 
 ### I.5 Misc
 
