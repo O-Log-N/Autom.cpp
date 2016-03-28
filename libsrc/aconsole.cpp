@@ -62,8 +62,7 @@ Console::TimeLabel Console::timeWithLabel() {
     if(firstFreeATime == ATIMENONE) {
         auto it = aTimes.insert(aTimes.end(),PrivateATimeStoredType());
         //moved now() after insert to avoid measuring time of insert()
-        std::chrono::time_point<std::chrono::high_resolution_clock> now = std::chrono::high_resolution_clock::now();
-        (*it).began = now;
+        it->began = Clock::now();
         return TimeLabel(it - aTimes.begin());
     }
 
@@ -75,21 +74,20 @@ Console::TimeLabel Console::timeWithLabel() {
     firstFreeATime = item.nextFree;
 
     item.nextFree = ATIMENONE;
-    std::chrono::time_point<std::chrono::high_resolution_clock> now = std::chrono::high_resolution_clock::now();
-    item.began = now;
+    item.began = Clock::now();
     return TimeLabel(idx);
 }
 
 void Console::timeEnd(Console::TimeLabel label, const char* text) {
     //calculating now() right here, to avoid measuring find() function
-    std::chrono::time_point<std::chrono::high_resolution_clock> now = std::chrono::high_resolution_clock::now();
+    TimePoint now = Clock::now();
 
     size_t idx = label.idx;
     assert(idx < aTimes.size());//TODO!: remove assert (see Console::time())
     auto& item = aTimes[idx];
     assert(item.nextFree == ATIMENONE);//TODO: AASSERT() or remove?
 
-    write(INFO,"Console::timeEnd('{}'): {}", text, std::chrono::duration_cast<std::chrono::seconds>(now - item.began).count());
+    write(INFO,"Console::timeEnd('{}'): {}", text, PrintableDuration(now - item.began).count());
 
     //{ adding item 'idx' to single-linked list
     item.nextFree = firstFreeATime;
@@ -100,14 +98,14 @@ void Console::timeEnd(Console::TimeLabel label, const char* text) {
 #ifndef ASTRIP_NODEJS_COMPAT
 //{ NODE.JS COMPATIBILITY HELPERS
 void Console::time(const char* label) {
-    auto it = njTimes.insert(std::unordered_map<std::string, std::chrono::time_point<std::chrono::high_resolution_clock>>::value_type(label, std::chrono::time_point<std::chrono::high_resolution_clock>())).first; // TODO: check 0 init in time_point def ctor
+    auto it = njTimes.insert(std::unordered_map<std::string, TimePoint>::value_type(label, TimePoint())).first;
     //moved now() after insert to avoid measuring time of insert()
-    std::chrono::time_point<std::chrono::high_resolution_clock> now = std::chrono::high_resolution_clock::now();
-    (*it).second = now;
+    it->second = Clock::now();
 }
+
 void Console::timeEnd(const char* label) {
     //calculating now() right here, to avoid measuring find() function
-    std::chrono::time_point<std::chrono::high_resolution_clock> now = std::chrono::high_resolution_clock::now();
+    TimePoint now = Clock::now();
 
     auto found = njTimes.find(label);
     if(found == njTimes.end()) {
@@ -115,7 +113,7 @@ void Console::timeEnd(const char* label) {
         return;
     }
 
-    write(INFO,"Console::timeEnd('{}'): {}", label, std::chrono::duration_cast<std::chrono::seconds>(now - (*found).second).count());
+    write(INFO,"Console::timeEnd('{}'): {}", label, PrintableDuration(now - found->second).count());
     njTimes.erase(found);
 }
 //} NODE.JS COMPATIBILITY HELPERS

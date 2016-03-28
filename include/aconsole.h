@@ -40,6 +40,10 @@ static_assert( ATRACE_LVL_DEFAULT <= ATRACE_LVL_MAX, "ATRACE_LVL_DEFAULT <= ATRA
 namespace autom
 {
 class Console {
+    using Clock = std::chrono::high_resolution_clock;
+    using TimePoint = Clock::time_point;
+    using PrintableDuration = std::chrono::duration<double, std::milli>;
+
 public:
     enum WRITELEVEL //NOT using enum class here to enable shorter console.write(Console::INFO,...);
     {
@@ -56,7 +60,7 @@ private:
     static const size_t ATIMENONE = static_cast<size_t>(-1);
     struct PrivateATimeStoredType {
         size_t nextFree = ATIMENONE;
-        std::chrono::time_point<std::chrono::high_resolution_clock> began;
+        TimePoint began;
     };
 
     int softTraceLevel = ATRACE_LVL_DEFAULT;
@@ -66,7 +70,7 @@ private:
     //'sparse' vector with firstFreeATime forming single-linked list
     //in nextFree items
 #ifndef ASTRIP_NODEJS_COMPAT
-    std::unordered_map<std::string,std::chrono::time_point<std::chrono::high_resolution_clock>> njTimes;
+    std::unordered_map<std::string,TimePoint> njTimes;
 #endif
 public:
     virtual void formattedWrite( WRITELEVEL lvl, const char* s ) = 0;
@@ -168,7 +172,7 @@ public:
         int nMsg = 0;
         if(consolePtr) {
             nMsg = consolePtr->messageCount();
-            delete consolePtr; // TODO: if( ! forever )
+            delete consolePtr;
         }
 
         consolePtr = newConsole.release();
