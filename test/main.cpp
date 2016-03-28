@@ -12,13 +12,13 @@ int main()
     {
         console.trace( "Starting..." );
         console.assignNewConsole( unique_ptr<FileConsole>(new FileConsole(cout)) );
- 		auto idt2 = console.timeWithLabel();
-		auto idt1 = console.timeWithLabel();
-		console.info( "Hello, {0}{1}", "World",'!' );
+        auto idt2 = console.timeWithLabel();
+        auto idt1 = console.timeWithLabel();
+        console.info( "Hello, {0}{1}", "World",'!' );
         ATRACE3( "TRACE LEVEL IS {0}, line {1}", console.traceLevel(), __LINE__ );
-		console.timeEnd( idt1, "1" );
-		console.timeEnd( idt2, "2" );
-		throw AssertionError( "a>b", __FILE__, __LINE__, "error #{}", 3 );
+        console.timeEnd( idt1, "1" );
+        console.timeEnd( idt2, "2" );
+        throw AssertionError( "a>b", __FILE__, __LINE__, "error #{}", 3 );
     }
     catch( const std::exception& e )
     {
