@@ -40,11 +40,11 @@ class InfraFileConsole : public Console
     std::ofstream os;
 
 public:
-    FileConsole(std::ostream&& os_)
+    InfraFileConsole(std::ostream&& os_)
         : os(std::move(os_)) {
     }
-    FileConsole(const FileConsole&) = delete;
-    FileConsole& operator =(const FileConsole&) = delete;
+    InfraFileConsole(const InfraFileConsole&) = delete;
+    InfraFileConsole& operator =(const InfraFileConsole&) = delete;
 
     void formattedWrite( WRITELEVEL lvl, const char* s ) override;
 };
