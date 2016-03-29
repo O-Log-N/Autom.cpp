@@ -17,7 +17,6 @@ Copyright (C) 2016 OLogN Technologies AG
 
 #include "../3rdparty/cppformat/cppformat/format.h"
 
-#include <iostream>
 #include <unordered_map>
 
 #ifndef ATRACE_LVL_MAX
