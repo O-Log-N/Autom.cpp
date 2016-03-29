@@ -15,7 +15,7 @@ Copyright (C) 2016 OLogN Technologies AG
 #include "../include/aconsole.h"
 
 namespace autom {
-ConsoleWrapper console;
+InfraConsoleWrapper infraConsole;
 
 //NB: MSVC doesn't support single-parameter static_assert() :-(
 static_assert(Console::TRACE==0,"Console::TRACE==0");

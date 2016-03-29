@@ -20,6 +20,7 @@ Copyright (C) 2016 OLogN Technologies AG
 #include <iostream>
 #include <chrono>
 #include <unordered_map>
+#include <mutex>
 
 #ifndef ATRACE_LVL_MAX
 #define ATRACE_LVL_MAX 4 // Compile time max trace level
@@ -40,9 +41,9 @@ static_assert( ATRACE_LVL_DEFAULT <= ATRACE_LVL_MAX, "ATRACE_LVL_DEFAULT <= ATRA
 namespace autom
 {
 class Console {
-	//Note for Infrastructure-level Developers:
-	//  Console as such is thread-agnostic
-	//  ALL the thread sync is a responsibility of 'wrappers'
+    //Note for Infrastructure-level Developers:
+    //  Console as such is thread-agnostic
+    //  ALL the thread sync is a responsibility of 'wrappers'
 public:
     enum WRITELEVEL //NOT using enum class here to enable shorter console.write(Console::INFO,...);
     {
@@ -170,7 +171,7 @@ public:
         _ensureInit();
     }
     void assignNewConsole( std::unique_ptr<Console> newConsole ) {
-    	std::lock_guard<std::mutex> lock(mx);
+        std::lock_guard<std::mutex> lock(mx);
         int nMsg = 0;
         if(consolePtr) {
             nMsg = consolePtr->messageCount();
@@ -188,26 +189,26 @@ public:
     //  to allow tracing within global destructors
     //  without worrying about global destructor call order
     {
-    	std::lock_guard<std::mutex> lock(mx);
+        std::lock_guard<std::mutex> lock(mx);
         forever = true;
     }
 
     int traceLevel()
     {
-	std::lock_guard<std::mutex> lock(mx);
-	_ensureInit();
+        std::lock_guard<std::mutex> lock(mx);
+        _ensureInit();
         return consolePtr->traceLevel();
     }
 
     template< typename... ARGS >
     void write( Console::WRITELEVEL lvl, const char* formatStr, const ARGS& ... args )
     {
-    	std::lock_guard<std::mutex> lock(mx);
+        std::lock_guard<std::mutex> lock(mx);
         _ensureInit();
         consolePtr->write( lvl, formatStr, args... );
     }
-    
-    void formattedWrite( WRITELEVEL lvl, const char* s ) {
+
+    void formattedWrite( Console::WRITELEVEL lvl, const char* s ) {
         std::lock_guard<std::mutex> lock(mx);
         _ensureInit();
         consolePtr->formattedWrite(lvl, s);
@@ -216,7 +217,7 @@ public:
     InfraConsoleWrapper( const InfraConsoleWrapper& ) = delete;
     InfraConsoleWrapper& operator =( const InfraConsoleWrapper& ) = delete;
     ~InfraConsoleWrapper() {
-    	std::lock_guard<std::mutex> lock(mx);//doesn't really make sense, but reduces vulnerability window a bit
+        std::lock_guard<std::mutex> lock(mx);//doesn't really make sense, but reduces vulnerability window a bit
         if(consolePtr && !forever) {
             delete consolePtr;
             consolePtr = nullptr;//important here as global InfraConsoleWrapper MAY
@@ -230,7 +231,7 @@ public:
         return consolePtr->timeWithLabel();
     }
     void timeEnd(Console::TimeLabel label, const char* text) {
-    	std::lock_guard<std::mutex> lock(mx);
+        std::lock_guard<std::mutex> lock(mx);
         _ensureInit();
         consolePtr->timeEnd(label, text);
     }
@@ -238,12 +239,12 @@ public:
 #ifndef ASTRIP_NODEJS_COMPAT
     //{ NODE.JS COMPATIBILITY HELPERS
     void time(const char* label) {
-    	std::lock_guard<std::mutex> lock(mx);
+        std::lock_guard<std::mutex> lock(mx);
         _ensureInit();
         consolePtr->time(label);
     }
     void timeEnd(const char* label) {
-    	std::lock_guard<std::mutex> lock(mx);
+        std::lock_guard<std::mutex> lock(mx);
         _ensureInit();
         consolePtr->timeEnd(label);
     }
@@ -255,22 +256,22 @@ public:
     }
     template< typename... ARGS >
     void info( const char* formatStr, const ARGS& ... args ) {
-    	std::lock_guard<std::mutex> lock(mx);
+        std::lock_guard<std::mutex> lock(mx);
         consolePtr->info(formatStr, args...);
     }
     template< typename... ARGS >
     void log( const char* formatStr, const ARGS& ... args ) {
-    	std::lock_guard<std::mutex> lock(mx);
+        std::lock_guard<std::mutex> lock(mx);
         consolePtr->log(formatStr, args...);
     }
     template< typename... ARGS >
     void trace( const char* formatStr, const ARGS& ... args ) {
-    	std::lock_guard<std::mutex> lock(mx);
+        std::lock_guard<std::mutex> lock(mx);
         consolePtr->trace(formatStr, args...);
     }
     template< typename... ARGS >
     void warn( const char* formatStr, const ARGS& ... args ) {
-    	std::lock_guard<std::mutex> lock(mx);
+        std::lock_guard<std::mutex> lock(mx);
         consolePtr->warn(formatStr, args...);
     }
     //} NODE.JS COMPATIBILITY HELPERS
@@ -288,7 +289,7 @@ extern InfraConsoleWrapper infraConsole;
 class NodeConsole : public Console {
 public:
     void formattedWrite( WRITELEVEL lvl, const char* s ) override {
-    	infraConsole.formattedWrite( lvl, s );
+        infraConsole.formattedWrite( lvl, s );
     }
 };
 
@@ -299,10 +300,10 @@ class NodeConsoleWrapper
 
 public:
     NodeConsoleWrapper() {
-    	consolePtr = new NodeConsole();
+        consolePtr = std::unique_ptr<Console>( new NodeConsole() );
     }
     void assignNewConsole( std::unique_ptr<Console> newConsole ) {
-    	consolePtr = newConsole;
+        consolePtr = std::move( newConsole );
     }
 
     int traceLevel()
@@ -359,15 +360,15 @@ public:
     }
     //} NODE.JS COMPATIBILITY HELPERS
 #endif
-    }
 };
 }
+
 
 #if ( ATRACE_LVL_MAX >= 4 )
 #define ATRACE4(...)\
 do {\
-	if(console.traceLevel()>=4)\
-		autom::console.write(autom::Console::TRACE,__VA_ARGS__);\
+	if(infraConsole.traceLevel()>=4)\
+		autom::infraConsole.write(autom::Console::TRACE,__VA_ARGS__);\
 	} while(0)
 #else
 #define ATRACE4(...)
@@ -376,8 +377,8 @@ do {\
 #if ( ATRACE_LVL_MAX >= 3 )
 #define ATRACE3(...)\
 do {\
-	if(console.traceLevel()>=3)\
-		autom::console.write(autom::Console::TRACE,__VA_ARGS__);\
+	if(infraConsole.traceLevel()>=3)\
+		autom::infraConsole.write(autom::Console::TRACE,__VA_ARGS__);\
 	} while(0)
 #else
 #define ATRACE3(...)
@@ -386,8 +387,8 @@ do {\
 #if ( ATRACE_LVL_MAX >= 2 )
 #define ATRACE2(...)\
 do {\
-	if(console.traceLevel()>=2)\
-		autom::console.write(autom::Console::TRACE,__VA_ARGS__);\
+	if(infraConsole.traceLevel()>=2)\
+		autom::infraConsole.write(autom::Console::TRACE,__VA_ARGS__);\
 	} while(0)
 #else
 #define ATRACE2(...)
@@ -396,8 +397,8 @@ do {\
 #if ( ATRACE_LVL_MAX >= 1 )
 #define ATRACE1(...)\
 do {\
-	if(console.traceLevel()>=1)\
-		autom::console.write(autom::Console::TRACE,__VA_ARGS__);\
+	if(infraConsole.traceLevel()>=1)\
+		autom::infraConsole.write(autom::Console::TRACE,__VA_ARGS__);\
 	} while(0)
 #else
 #define ATRACE1(...)
@@ -405,8 +406,8 @@ do {\
 
 #define ATRACE0(...)\
 do {\
-	if(console.traceLevel()>=0)\
-		autom::console.write(autom::Console::TRACE,__VA_ARGS__);\
+	if(infraConsole.traceLevel()>=0)\
+		autom::infraConsole.write(autom::Console::TRACE,__VA_ARGS__);\
 	} while(0)
 
 #endif
