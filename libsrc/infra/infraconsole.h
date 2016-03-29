@@ -15,6 +15,23 @@ Copyright (C) 2016 OLogN Technologies AG
 #ifndef INFRACONSOLE_H_INCLUDED
 #define INFRACONSOLE_H_INCLUDED
 
+#ifndef INFRATRACE_LVL_MAX
+#define INFRATRACE_LVL_MAX 4 // Compile time max trace level
+#endif
+
+//NB: MSVC doesn't support single-parameter static_assert() :-(
+static_assert( INFRATRACE_LVL_MAX >= 0, "INFRATRACE_LVL_MAX >= 0" );
+static_assert( INFRATRACE_LVL_MAX <= 4, "INFRATRACE_LVL_MAX <= 4" );
+
+#ifndef INFRATRACE_LVL_DEFAULT
+#define INFRATRACE_LVL_DEFAULT 2 // Default value for runtime trace level
+#endif
+
+//NB: MSVC doesn't support single-parameter static_assert() :-(
+static_assert( INFRATRACE_LVL_DEFAULT >= 0, "INFRATRACE_LVL_DEFAULT >= 0" );
+static_assert( INFRATRACE_LVL_DEFAULT <= INFRATRACE_LVL_MAX, "INFRATRACE_LVL_DEFAULT <= INFRATRACE_LVL_MAX" );
+
+
 class InfraConsoleWrapper
 {
     Console* consolePtr = nullptr;
@@ -150,5 +167,51 @@ private:
 };
 
 extern InfraConsoleWrapper infraConsole;
+
+#if ( INFRATRACE_LVL_MAX >= 4 )
+#define INFRATRACE4(...)\
+do {\
+	if(autom::infraConsole.traceLevel()>=4)\
+		autom::infraConsole.write(autom::Console::TRACE,__VA_ARGS__);\
+	} while(0)
+#else
+#define INFRATRACE4(...)
+#endif
+
+#if ( INFRATRACE_LVL_MAX >= 3 )
+#define INFRATRACE3(...)\
+do {\
+	if(autom::infraConsole.traceLevel()>=3)\
+		autom::infraConsole.write(autom::Console::TRACE,__VA_ARGS__);\
+	} while(0)
+#else
+#define INFRATRACE3(...)
+#endif
+
+#if ( INFRATRACE_LVL_MAX >= 2 )
+#define INFRATRACE2(...)\
+do {\
+	if(autom::infraConsole.traceLevel()>=2)\
+		autom::infraConsole.write(autom::Console::TRACE,__VA_ARGS__);\
+	} while(0)
+#else
+#define INFRATRACE2(...)
+#endif
+
+#if ( INFRATRACE_LVL_MAX >= 1 )
+#define INFRATRACE1(...)\
+do {\
+	if(autom::infraConsole.traceLevel()>=1)\
+		autom::infraConsole.write(autom::Console::TRACE,__VA_ARGS__);\
+	} while(0)
+#else
+#define INFRATRACE1(...)
+#endif
+
+#define INFRATRACE0(...)\
+do {\
+	if(autom::infraConsole.traceLevel()>=0)\
+		autom::infraConsole.write(autom::Console::TRACE,__VA_ARGS__);\
+	} while(0)
 
 #endif
