@@ -53,7 +53,7 @@ void DefaultConsole::formattedWrite( WRITELEVEL lvl, const char* s ) {
     }
 }
 
-void FileConsole::formattedWrite( WRITELEVEL lvl, const char* s ) {
+void InfraFileConsole::formattedWrite( WRITELEVEL lvl, const char* s ) {
     //AASSERT() is probably way too harsh here
     if(lvl >= 0 && lvl < sizeof(defaultFmtStrings)/sizeof(defaultFmtStrings[0]))
         fmt::print(os, defaultFmtStrings[lvl], s);
