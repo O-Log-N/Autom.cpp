@@ -12,7 +12,7 @@ Copyright (C) 2016 OLogN Technologies AG
 	51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 *******************************************************************************/
 
-#include "../include/aconsole.h"
+#include "infra/infraconsole.h"
 
 namespace autom {
 InfraConsoleWrapper infraConsole;
@@ -118,5 +118,9 @@ void Console::timeEnd(const char* label) {
 }
 //} NODE.JS COMPATIBILITY HELPERS
 #endif
+
+void NodeConsole::formattedWrite( WRITELEVEL lvl, const char* s ) {
+	infraConsole.formattedWrite(lvl, s);
+}
 
 }//namespace autom
