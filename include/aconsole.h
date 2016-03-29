@@ -18,7 +18,6 @@ Copyright (C) 2016 OLogN Technologies AG
 #include "../3rdparty/cppformat/cppformat/format.h"
 
 #include <iostream>
-#include <chrono>
 #include <unordered_map>
 
 #ifndef ATRACE_LVL_MAX
@@ -43,9 +42,6 @@ class Console {
     //Note for Infrastructure-level Developers:
     //  Console as such is thread-agnostic
     //  ALL the thread sync is a responsibility of 'wrappers'
-    using Clock = std::chrono::high_resolution_clock;
-    using TimePoint = Clock::time_point;
-    using PrintableDuration = std::chrono::duration<double, std::milli>;
 
 public:
     enum WRITELEVEL //NOT using enum class here to enable shorter console.write(Console::INFO,...);
