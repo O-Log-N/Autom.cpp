@@ -20,7 +20,9 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #include <exception>
 #include <string>
 
-#include <assert.h>
+#ifndef AASSERT_LVL
+#define AASSERT_LVL 2
+#endif
 
 namespace autom
 {
@@ -48,10 +50,6 @@ public:
 };
 }
 
-#ifndef AASSERT_LVL
-#define AASSERT_LVL 2
-#endif
-
 #if AASSERT_LVL >= 4
 #ifdef __GNUC__
 #define AASSERT4(cond,...) (void)( !!(cond) || ( throw autom::AssertionError( #cond, __FILE__, __LINE__, ## __VA_ARGS__ ), 0 ) );
@@ -74,7 +72,7 @@ public:
 
 #if AASSERT_LVL >= 2
 #ifdef __GNUC__
-#define AASSERT3(cond,...) (void)( !!(cond) || ( throw autom::AssertionError( #cond, __FILE__, __LINE__, ## __VA_ARGS__ ), 0 ) );
+#define AASSERT2(cond,...) (void)( !!(cond) || ( throw autom::AssertionError( #cond, __FILE__, __LINE__, ## __VA_ARGS__ ), 0 ) );
 #else
 #define AASSERT2(cond,...) (void)( !!(cond) || ( throw autom::AssertionError( #cond, __FILE__, __LINE__, __VA_ARGS__ ), 0 ) );
 #endif
