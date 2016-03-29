@@ -13,6 +13,11 @@ Copyright (C) 2016 OLogN Technologies AG
 *******************************************************************************/
 
 #include "infra/infraconsole.h"
+#include <chrono>
+
+using Clock = std::chrono::high_resolution_clock;
+using TimePoint = Clock::time_point;
+using PrintableDuration = std::chrono::duration<double, std::milli>;
 
 namespace autom {
 InfraConsoleWrapper infraConsole;
