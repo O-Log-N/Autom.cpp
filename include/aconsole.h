@@ -137,18 +137,6 @@ public:
     void formattedWrite( WRITELEVEL lvl, const char* s ) override;
 };
 
-class FileConsole : public Console
-{
-    std::ostream& os;
-
-public:
-    FileConsole(std::ostream& os_)
-        : os(os_) {
-    }
-
-    void formattedWrite( WRITELEVEL lvl, const char* s ) override;
-};
-
 class NodeConsole : public Console {
 public:
     void formattedWrite( WRITELEVEL lvl, const char* s ) override;
