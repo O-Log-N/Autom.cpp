@@ -33,11 +33,21 @@ public:
         longMessage.append( fmt::format( msg_, args... ) );
     }
 
+    template< typename... ARGS >
+    AssertionError( const char* cond_, const char* file_, int line_ )
+    {
+        longMessage = fmt::format( "Assertion {} failed, file {}, line {} ", cond_, file_, line_ );
+    }
+
     const char* what() const override
     {
         return longMessage.c_str();
     }
 };
 }
+
+#define AASSERT(cond,...)\
+if( !(cond) )\
+	throw autom::AssertionError( #cond, __FILE__, __LINE__, __VA_ARGS__ );
 
 #endif
