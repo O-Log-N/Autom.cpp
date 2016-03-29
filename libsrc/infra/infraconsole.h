@@ -15,6 +15,8 @@ Copyright (C) 2016 OLogN Technologies AG
 #ifndef INFRACONSOLE_H_INCLUDED
 #define INFRACONSOLE_H_INCLUDED
 
+#include "../../include/aconsole.h"
+
 #ifndef INFRATRACE_LVL_MAX
 #define INFRATRACE_LVL_MAX 4 // Compile time max trace level
 #endif
