@@ -16,6 +16,7 @@ Copyright (C) 2016 OLogN Technologies AG
 #define INFRACONSOLE_H_INCLUDED
 
 #include "../../include/aconsole.h"
+#include <iostream>
 #include <mutex>
 
 #ifndef INFRATRACE_LVL_MAX
@@ -34,6 +35,19 @@ static_assert( INFRATRACE_LVL_MAX <= 4, "INFRATRACE_LVL_MAX <= 4" );
 static_assert( INFRATRACE_LVL_DEFAULT >= 0, "INFRATRACE_LVL_DEFAULT >= 0" );
 static_assert( INFRATRACE_LVL_DEFAULT <= INFRATRACE_LVL_MAX, "INFRATRACE_LVL_DEFAULT <= INFRATRACE_LVL_MAX" );
 
+class InfraFileConsole : public Console
+{
+    std::ofstream os;
+
+public:
+    FileConsole(std::ostream&& os_)
+        : os(std::move(os_)) {
+    }
+    FileConsole(const FileConsole&) = delete;
+    FileConsole& operator =(const FileConsole&) = delete;
+
+    void formattedWrite( WRITELEVEL lvl, const char* s ) override;
+};
 
 class InfraConsoleWrapper
 {
