@@ -19,8 +19,8 @@ int main()
         ATRACE3( "TRACE LEVEL IS {0}, line {1}", infraConsole.traceLevel(), __LINE__ );
         infraConsole.timeEnd( idt2, "2" );
         int a = 2, b = 3;
-        AASSERT( b > a );
-        AASSERT( a > b, "---{}---{}---{}---", 1, 2, 3 );
+        AASSERT3( b > a );
+        AASSERT3( a > b, "---{}---{}---{}---", 1, 2, 3 );
     }
     catch( const std::exception& e )
     {

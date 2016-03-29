@@ -20,6 +20,8 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #include <exception>
 #include <string>
 
+#include <assert.h>
+
 namespace autom
 {
 class AssertionError : public std::exception
@@ -46,14 +48,58 @@ public:
 };
 }
 
+#ifndef AASSERT_LVL
+#define AASSERT_LVL 2
+#endif
+
+#if AASSERT_LVL >= 4
 #ifdef __GNUC__
-#define AASSERT(cond,...)\
-if( !(cond) )\
-	throw autom::AssertionError( #cond, __FILE__, __LINE__, ## __VA_ARGS__ );
+#define AASSERT4(cond,...) (void)( !!(cond) || ( throw autom::AssertionError( #cond, __FILE__, __LINE__, ## __VA_ARGS__ ), 0 ) );
 #else
-#define AASSERT(cond,...)\
-if( !(cond) )\
-	throw autom::AssertionError( #cond, __FILE__, __LINE__, __VA_ARGS__ );
+#define AASSERT4(cond,...) (void)( !!(cond) || ( throw autom::AssertionError( #cond, __FILE__, __LINE__, __VA_ARGS__ ), 0 ) );
+#endif
+#else
+#define AASSERT4(cond,...) ((void)0)
+#endif
+
+#if AASSERT_LVL >= 3
+#ifdef __GNUC__
+#define AASSERT3(cond,...) (void)( !!(cond) || ( throw autom::AssertionError( #cond, __FILE__, __LINE__, ## __VA_ARGS__ ), 0 ) );
+#else
+#define AASSERT3(cond,...) (void)( !!(cond) || ( throw autom::AssertionError( #cond, __FILE__, __LINE__, __VA_ARGS__ ), 0 ) );
+#endif
+#else
+#define AASSERT3(cond,...) ((void)0)
+#endif
+
+#if AASSERT_LVL >= 2
+#ifdef __GNUC__
+#define AASSERT3(cond,...) (void)( !!(cond) || ( throw autom::AssertionError( #cond, __FILE__, __LINE__, ## __VA_ARGS__ ), 0 ) );
+#else
+#define AASSERT2(cond,...) (void)( !!(cond) || ( throw autom::AssertionError( #cond, __FILE__, __LINE__, __VA_ARGS__ ), 0 ) );
+#endif
+#else
+#define AASSERT2(cond,...) ((void)0)
+#endif
+
+#if AASSERT_LVL >= 1
+#ifdef __GNUC__
+#define AASSERT1(cond,...) (void)( !!(cond) || ( throw autom::AssertionError( #cond, __FILE__, __LINE__, ## __VA_ARGS__ ), 0 ) );
+#else
+#define AASSERT1(cond,...) (void)( !!(cond) || ( throw autom::AssertionError( #cond, __FILE__, __LINE__, __VA_ARGS__ ), 0 ) );
+#endif
+#else
+#define AASSERT1(cond,...) ((void)0)
+#endif
+
+#if AASSERT_LVL >= 0
+#ifdef __GNUC__
+#define AASSERT0(cond,...) (void)( !!(cond) || ( throw autom::AssertionError( #cond, __FILE__, __LINE__, ## __VA_ARGS__ ), 0 ) );
+#else
+#define AASSERT0(cond,...) (void)( !!(cond) || ( throw autom::AssertionError( #cond, __FILE__, __LINE__, __VA_ARGS__ ), 0 ) );
+#endif
+#else
+#define AASSERT0(cond,...) ((void)0)
 #endif
 
 #endif
