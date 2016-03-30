@@ -21,7 +21,7 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #include <string>
 
 #ifndef AASSERT_LVL
-#define AASSERT_LVL 2
+#define AASSERT_LVL 4
 #endif
 
 namespace autom
@@ -38,13 +38,11 @@ public:
     }
 
     template< typename... ARGS >
-    AssertionError( const char* cond_, const char* file_, int line_ )
-    {
+    AssertionError( const char* cond_, const char* file_, int line_ ) {
         longMessage = fmt::format( "Assertion {} failed, file {}, line {} ", cond_, file_, line_ );
     }
 
-    const char* what() const noexcept override
-    {
+    const char* what() const noexcept override {
         return longMessage.c_str();
     }
 };
@@ -52,9 +50,9 @@ public:
 
 #if AASSERT_LVL >= 4
 #ifdef __GNUC__
-#define AASSERT4(cond,...) (void)( !!(cond) || ( throw autom::AssertionError( #cond, __FILE__, __LINE__, ## __VA_ARGS__ ), 0 ) );
+#define AASSERT4(cond,...) (void)( !!(cond) || ( throw autom::AssertionError( #cond, __FILE__, __LINE__, ## __VA_ARGS__ ), 0 ) )
 #else
-#define AASSERT4(cond,...) (void)( !!(cond) || ( throw autom::AssertionError( #cond, __FILE__, __LINE__, __VA_ARGS__ ), 0 ) );
+#define AASSERT4(cond,...) (void)( !!(cond) || ( throw autom::AssertionError( #cond, __FILE__, __LINE__, __VA_ARGS__ ), 0 ) )
 #endif
 #else
 #define AASSERT4(cond,...) ((void)0)
@@ -62,9 +60,9 @@ public:
 
 #if AASSERT_LVL >= 3
 #ifdef __GNUC__
-#define AASSERT3(cond,...) (void)( !!(cond) || ( throw autom::AssertionError( #cond, __FILE__, __LINE__, ## __VA_ARGS__ ), 0 ) );
+#define AASSERT3(cond,...) (void)( !!(cond) || ( throw autom::AssertionError( #cond, __FILE__, __LINE__, ## __VA_ARGS__ ), 0 ) )
 #else
-#define AASSERT3(cond,...) (void)( !!(cond) || ( throw autom::AssertionError( #cond, __FILE__, __LINE__, __VA_ARGS__ ), 0 ) );
+#define AASSERT3(cond,...) (void)( !!(cond) || ( throw autom::AssertionError( #cond, __FILE__, __LINE__, __VA_ARGS__ ), 0 ) )
 #endif
 #else
 #define AASSERT3(cond,...) ((void)0)
@@ -72,9 +70,9 @@ public:
 
 #if AASSERT_LVL >= 2
 #ifdef __GNUC__
-#define AASSERT2(cond,...) (void)( !!(cond) || ( throw autom::AssertionError( #cond, __FILE__, __LINE__, ## __VA_ARGS__ ), 0 ) );
+#define AASSERT2(cond,...) (void)( !!(cond) || ( throw autom::AssertionError( #cond, __FILE__, __LINE__, ## __VA_ARGS__ ), 0 ) )
 #else
-#define AASSERT2(cond,...) (void)( !!(cond) || ( throw autom::AssertionError( #cond, __FILE__, __LINE__, __VA_ARGS__ ), 0 ) );
+#define AASSERT2(cond,...) (void)( !!(cond) || ( throw autom::AssertionError( #cond, __FILE__, __LINE__, __VA_ARGS__ ), 0 ) )
 #endif
 #else
 #define AASSERT2(cond,...) ((void)0)
@@ -82,9 +80,9 @@ public:
 
 #if AASSERT_LVL >= 1
 #ifdef __GNUC__
-#define AASSERT1(cond,...) (void)( !!(cond) || ( throw autom::AssertionError( #cond, __FILE__, __LINE__, ## __VA_ARGS__ ), 0 ) );
+#define AASSERT1(cond,...) (void)( !!(cond) || ( throw autom::AssertionError( #cond, __FILE__, __LINE__, ## __VA_ARGS__ ), 0 ) )
 #else
-#define AASSERT1(cond,...) (void)( !!(cond) || ( throw autom::AssertionError( #cond, __FILE__, __LINE__, __VA_ARGS__ ), 0 ) );
+#define AASSERT1(cond,...) (void)( !!(cond) || ( throw autom::AssertionError( #cond, __FILE__, __LINE__, __VA_ARGS__ ), 0 ) )
 #endif
 #else
 #define AASSERT1(cond,...) ((void)0)
@@ -92,9 +90,9 @@ public:
 
 #if AASSERT_LVL >= 0
 #ifdef __GNUC__
-#define AASSERT0(cond,...) (void)( !!(cond) || ( throw autom::AssertionError( #cond, __FILE__, __LINE__, ## __VA_ARGS__ ), 0 ) );
+#define AASSERT0(cond,...) (void)( !!(cond) || ( throw autom::AssertionError( #cond, __FILE__, __LINE__, ## __VA_ARGS__ ), 0 ) )
 #else
-#define AASSERT0(cond,...) (void)( !!(cond) || ( throw autom::AssertionError( #cond, __FILE__, __LINE__, __VA_ARGS__ ), 0 ) );
+#define AASSERT0(cond,...) (void)( !!(cond) || ( throw autom::AssertionError( #cond, __FILE__, __LINE__, __VA_ARGS__ ), 0 ) )
 #endif
 #else
 #define AASSERT0(cond,...) ((void)0)
