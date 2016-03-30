@@ -53,16 +53,6 @@ void DefaultConsole::formattedWrite( WRITELEVEL lvl, const char* s ) {
     }
 }
 
-void InfraFileConsole::formattedWrite( WRITELEVEL lvl, const char* s ) {
-    //AASSERT() is probably way too harsh here
-    if(lvl >= 0 && lvl < sizeof(defaultFmtStrings)/sizeof(defaultFmtStrings[0]))
-        fmt::print(os, defaultFmtStrings[lvl], s);
-    else {
-        fmt::print(os, "ERROR: DefaultConsole::formattedWrite(): unknown lvl={}, forced to ERROR:\n", lvl);
-        fmt::print(os, "ERROR: {}\n", s);
-    }
-}
-
 Console::TimeLabel Console::timeWithLabel() {
     if(firstFreeATime == ATIMENONE) {
         auto it = aTimes.insert(aTimes.end(),PrivateATimeStoredType());
@@ -125,7 +115,17 @@ void Console::timeEnd(const char* label) {
 #endif
 
 void NodeConsole::formattedWrite( WRITELEVEL lvl, const char* s ) {
-	infraConsole.formattedWrite(lvl, s);
+    infraConsole.formattedWrite(lvl, s);
 }
 
 }//namespace autom
+
+void InfraFileConsole::formattedWrite( WRITELEVEL lvl, const char* s ) {
+    //AASSERT() is probably way too harsh here
+    if( lvl >= 0 && lvl < sizeof( defaultFmtStrings ) / sizeof( defaultFmtStrings[0] ) )
+        fmt::print( os, defaultFmtStrings[lvl], s );
+    else {
+        fmt::print( os, "ERROR: DefaultConsole::formattedWrite(): unknown lvl={}, forced to ERROR:\n", lvl );
+        fmt::print( os, "ERROR: {}\n", s );
+    }
+}

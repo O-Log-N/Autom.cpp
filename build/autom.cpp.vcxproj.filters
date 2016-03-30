@@ -44,5 +44,8 @@
     <ClInclude Include="..\3rdparty\cppformat\cppformat\format.h">
       <Filter>Header Files\cppformat</Filter>
     </ClInclude>
+    <ClInclude Include="..\libsrc\infra\infraconsole.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

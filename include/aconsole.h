@@ -18,6 +18,7 @@ Copyright (C) 2016 OLogN Technologies AG
 #include "../3rdparty/cppformat/cppformat/format.h"
 
 #include <unordered_map>
+#include <chrono> // TODO: still needed for njTimes
 
 #ifndef ATRACE_LVL_MAX
 #define ATRACE_LVL_MAX 4 // Compile time max trace level
@@ -41,6 +42,7 @@ class Console {
     //Note for Infrastructure-level Developers:
     //  Console as such is thread-agnostic
     //  ALL the thread sync is a responsibility of 'wrappers'
+    using TimePoint = std::chrono::high_resolution_clock::time_point;
 
 public:
     enum WRITELEVEL //NOT using enum class here to enable shorter console.write(Console::INFO,...);

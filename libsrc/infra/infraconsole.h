@@ -35,13 +35,15 @@ static_assert( INFRATRACE_LVL_MAX <= 4, "INFRATRACE_LVL_MAX <= 4" );
 static_assert( INFRATRACE_LVL_DEFAULT >= 0, "INFRATRACE_LVL_DEFAULT >= 0" );
 static_assert( INFRATRACE_LVL_DEFAULT <= INFRATRACE_LVL_MAX, "INFRATRACE_LVL_DEFAULT <= INFRATRACE_LVL_MAX" );
 
+using namespace autom;
+
 class InfraFileConsole : public Console
 {
-    std::ofstream os;
+    std::ostream& os;
 
 public:
-    InfraFileConsole(std::ostream&& os_)
-        : os(std::move(os_)) {
+    InfraFileConsole(std::ostream& os_)
+        : os(os_) {
     }
     InfraFileConsole(const InfraFileConsole&) = delete;
     InfraFileConsole& operator =(const InfraFileConsole&) = delete;
