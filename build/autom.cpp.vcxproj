@@ -163,6 +163,7 @@
     <ClInclude Include="..\3rdparty\cppformat\cppformat\format.h" />
     <ClInclude Include="..\include\aassert.h" />
     <ClInclude Include="..\include\aconsole.h" />
+    <ClInclude Include="..\libsrc\infra\infraconsole.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -12,7 +12,12 @@ Copyright (C) 2016 OLogN Technologies AG
 	51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 *******************************************************************************/
 
-#include "../include/aconsole.h"
+#include "infra/infraconsole.h"
+#include <chrono>
+
+using Clock = std::chrono::high_resolution_clock;
+using TimePoint = Clock::time_point;
+using PrintableDuration = std::chrono::duration<double, std::milli>;
 
 namespace autom {
 InfraConsoleWrapper infraConsole;
@@ -45,16 +50,6 @@ void DefaultConsole::formattedWrite( WRITELEVEL lvl, const char* s ) {
     else {
         fmt::print(std::cerr, "ERROR: DefaultConsole::formattedWrite(): unknown lvl={}, forced to ERROR:\n", lvl);
         fmt::print(std::cerr, "ERROR: {}\n", s);
-    }
-}
-
-void FileConsole::formattedWrite( WRITELEVEL lvl, const char* s ) {
-    //AASSERT() is probably way too harsh here
-    if(lvl >= 0 && lvl < sizeof(defaultFmtStrings)/sizeof(defaultFmtStrings[0]))
-        fmt::print(os, defaultFmtStrings[lvl], s);
-    else {
-        fmt::print(os, "ERROR: DefaultConsole::formattedWrite(): unknown lvl={}, forced to ERROR:\n", lvl);
-        fmt::print(os, "ERROR: {}\n", s);
     }
 }
 
@@ -119,4 +114,18 @@ void Console::timeEnd(const char* label) {
 //} NODE.JS COMPATIBILITY HELPERS
 #endif
 
+void NodeConsole::formattedWrite( WRITELEVEL lvl, const char* s ) {
+    infraConsole.formattedWrite(lvl, s);
+}
+
 }//namespace autom
+
+void InfraFileConsole::formattedWrite( WRITELEVEL lvl, const char* s ) {
+    //AASSERT() is probably way too harsh here
+    if( lvl >= 0 && lvl < sizeof( defaultFmtStrings ) / sizeof( defaultFmtStrings[0] ) )
+        fmt::print( os, defaultFmtStrings[lvl], s );
+    else {
+        fmt::print( os, "ERROR: DefaultConsole::formattedWrite(): unknown lvl={}, forced to ERROR:\n", lvl );
+        fmt::print( os, "ERROR: {}\n", s );
+    }
+}
