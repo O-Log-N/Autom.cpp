@@ -37,6 +37,12 @@ static_assert( INFRATRACE_LVL_DEFAULT <= INFRATRACE_LVL_MAX, "INFRATRACE_LVL_DEF
 
 using namespace autom;
 
+class DefaultConsole : public Console
+{
+public:
+    void formattedWrite( WRITELEVEL lvl, const char* s ) override;
+};
+
 class InfraFileConsole : public Console
 {
     std::ostream& os;
@@ -194,7 +200,7 @@ do {\
 		autom::infraConsole.write(autom::Console::TRACE,__VA_ARGS__);\
 	} while(0)
 #else
-#define INFRATRACE4(...)
+#define INFRATRACE4(...) (static_cast<void>(0))
 #endif
 
 #if ( INFRATRACE_LVL_MAX >= 3 )
@@ -204,7 +210,7 @@ do {\
 		autom::infraConsole.write(autom::Console::TRACE,__VA_ARGS__);\
 	} while(0)
 #else
-#define INFRATRACE3(...)
+#define INFRATRACE3(...) (static_cast<void>(0))
 #endif
 
 #if ( INFRATRACE_LVL_MAX >= 2 )
@@ -214,7 +220,7 @@ do {\
 		autom::infraConsole.write(autom::Console::TRACE,__VA_ARGS__);\
 	} while(0)
 #else
-#define INFRATRACE2(...)
+#define INFRATRACE2(...) (static_cast<void>(0))
 #endif
 
 #if ( INFRATRACE_LVL_MAX >= 1 )
@@ -224,13 +230,17 @@ do {\
 		autom::infraConsole.write(autom::Console::TRACE,__VA_ARGS__);\
 	} while(0)
 #else
-#define INFRATRACE1(...)
+#define INFRATRACE1(...) (static_cast<void>(0))
 #endif
 
+#if ( INFRATRACE_LVL_MAX >= 0 )
 #define INFRATRACE0(...)\
 do {\
 	if(autom::infraConsole.traceLevel()>=0)\
 		autom::infraConsole.write(autom::Console::TRACE,__VA_ARGS__);\
 	} while(0)
+#else
+#define INFRATRACE0(...) (static_cast<void>(0))
+#endif
 
 #endif

@@ -50,8 +50,7 @@ public:
         TRACE = 0, INFO = 1, NOTICE = 2, WARN = 3, ERROR = 4, CRITICAL = 5, ALERT = 6
     };
 
-    class TimeLabel {
-    public:
+    struct TimeLabel {
         size_t idx;
         TimeLabel( size_t u ) : idx( u ) {}
     };
@@ -132,12 +131,6 @@ public:
 #endif
 };
 
-class DefaultConsole : public Console
-{
-public:
-    void formattedWrite( WRITELEVEL lvl, const char* s ) override;
-};
-
 class NodeConsole : public Console {
 public:
     void formattedWrite( WRITELEVEL lvl, const char* s ) override;
@@ -215,29 +208,53 @@ public:
 
 
 #if ( ATRACE_LVL_MAX >= 4 )
-#define ATRACE4(...) (void)((console.traceLevel()<4) || (console.write(autom::Console::TRACE,__VA_ARGS__), 0))
+#define TRACE4(...)\
+do {\
+	if(console.traceLevel()>=4)\
+		console.write(autom::Console::TRACE,__VA_ARGS__);\
+	} while(0)
 #else
 #define ATRACE4(...) ((void)0)
 #endif
 
 #if ( ATRACE_LVL_MAX >= 3 )
-#define ATRACE3(...) (void)((console.traceLevel()<3) || (console.write(autom::Console::TRACE,__VA_ARGS__), 0))
+#define ATRACE3(...)\
+do {\
+	if(console.traceLevel()>=3)\
+		console.write(autom::Console::TRACE,__VA_ARGS__);\
+	} while(0)
 #else
-#define ATRACE3(...) ((void)0)
+#define INFRATRACE3(...) ((void)0)
 #endif
 
 #if ( ATRACE_LVL_MAX >= 2 )
-#define ATRACE2(...) (void)((console.traceLevel()<2) || (console.write(autom::Console::TRACE,__VA_ARGS__), 0))
+#define ATRACE2(...)\
+do {\
+	if(console.traceLevel()>=2)\
+		console.write(autom::Console::TRACE,__VA_ARGS__);\
+	} while(0)
 #else
 #define ATRACE2(...) ((void)0)
 #endif
 
 #if ( ATRACE_LVL_MAX >= 1 )
-#define ATRACE1(...) (void)((console.traceLevel()<1) || (console.write(autom::Console::TRACE,__VA_ARGS__), 0))
+#define ATRACE1(...)\
+do {\
+	if(console.traceLevel()>=1)\
+		console.write(autom::Console::TRACE,__VA_ARGS__);\
+	} while(0)
 #else
 #define ATRACE1(...) ((void)0)
 #endif
 
-#define ATRACE0(...) (void)((console.traceLevel()<0) || (console.write(autom::Console::TRACE,__VA_ARGS__), 0))
+#if ( ATRACE_LVL_MAX >= 0 )
+#define ATRACE0(...)\
+do {\
+	if(console.traceLevel()>=0)\
+		console.write(autom::Console::TRACE,__VA_ARGS__);\
+	} while(0)
+#else
+#define ATRACE0(...) ((void)0)
+#endif
 
 #endif
