@@ -57,24 +57,34 @@ public:
 
 private:
     static const size_t ATIMENONE = static_cast<size_t>(-1);
-    struct PrivateATimeStoredType {
+    /* struct PrivateATimeStoredType {
         size_t nextFree = ATIMENONE;
         TimePoint began;
-    };
+    };*/
+    using PrivateATimesPlaceholderType = std::vector<pair<size_t,size_t>>;
+    friend class ImplConsole;//"Collection pimpl"
 
     int softTraceLevel = ATRACE_LVL_DEFAULT;
     int nMessages = 0;//statistics-only; NON-STRICT in MT environments
     size_t firstFreeATime = ATIMENONE;
-    std::vector<PrivateATimeStoredType> aTimes;//for Autom-style timeWithLabel()/timeEnd()
+
+    //std::vector<PrivateATimeStoredType> aTimes;
+    alignas(alignof(PrivateATimesPlaceholderType))
+    	uint8_t _aTimesPlaceholder[sizeof(PrivateATimesPlaceholderType)];
+    //for Autom-style timeWithLabel()/timeEnd()
     //'sparse' vector with firstFreeATime forming single-linked list
     //in nextFree items
+
 #ifndef ASTRIP_NODEJS_COMPAT
     std::unordered_map<std::string,TimePoint> njTimes;
 #endif
 public:
+    Console();
     virtual void formattedWrite( WRITELEVEL lvl, const char* s ) = 0;
-    virtual ~Console() {
-    }
+    virtual ~Console();
+    
+    Console(const Console&) = delete;
+    Console& operator =(const Console&) = delete;
 
     int traceLevel() const {
         return softTraceLevel;
