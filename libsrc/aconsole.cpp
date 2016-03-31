@@ -24,17 +24,45 @@ using PrintableDuration = std::chrono::duration<double, std::milli>;
 
 namespace autom {
 
+class ImplConsole {
+    public:
+    struct PrivateATimesStoredType {
+        size_t nextFree = Console::ATIMENONE;
+        TimePoint began;
+    };
+
+    using ATimesType = std::vector<PrivateATimeStoredType>;
+
+    static_assert(sizeof(ATimesType) == sizeof(Console::PrivateATimesPlaceholderType),
+        "sizeof(ATimesType) == sizeof(Console::PrivateATimePlaceholderType)");
+    static_assert(alignof(ATimesType) == alignof(Console::PrivateATimesPlaceholderType),
+        "alignof(ATimesType) == alignof(Console::PrivateATimePlaceholderType)");
+        
+    static ATimesType& aTimes(uint8_t* _aTimesPlaceholder) {
+    	return *reinterpret_cast<ATimesType*>(_aTimesPlaceholder);
+    }
+};
+
+Console::Console() {
+    new ( &ImplConsole::aTimes(_aTimesPlaceholder) ) ImplConsole::ATimeType();
+}
+
+Console::~Console() {
+	ImplConsole::aTime(_aTimesPlaceholder).~ImplConsole::ATimeType();
+}
+
 Console::TimeLabel Console::timeWithLabel() {
     if(firstFreeATime == ATIMENONE) {
-        auto it = aTimes.insert(aTimes.end(),PrivateATimeStoredType());
+        auto it = ImplConsole::aTimes(_aTimesPlaceholder).insert(
+        	ImplConsole::aTimes(_aTimesPlaceholder).end(), PrivateATimeStoredType());
         //moved now() after insert to avoid measuring time of insert()
         it->began = Clock::now();
-        return TimeLabel(it - aTimes.begin());
+        return TimeLabel(it - ImplConsole::aTimes(_aTimesPlaceholder).begin());
     }
 
-    assert(firstFreeATime < aTimes.size());//TODO!: remove assert (see Console::time())
+    assert(firstFreeATime < ImplConsole::aTimes(_aTimesPlaceholder).size());//TODO!: remove assert (see Console::time())
     size_t idx = firstFreeATime;
-    auto& item = aTimes[idx];
+    auto& item = ImplConsole::aTimes(_aTimesPlaceholder)[idx];
 
     //removing first item from single-linked list
     firstFreeATime = item.nextFree;
@@ -49,8 +77,8 @@ void Console::timeEnd(Console::TimeLabel label, const char* text) {
     TimePoint now = Clock::now();
 
     size_t idx = label.idx;
-    assert(idx < aTimes.size());//TODO!: remove assert (see Console::time())
-    auto& item = aTimes[idx];
+    assert(idx < ImplConsole::aTimes(_aTimesPlaceholder).size());//TODO!: remove assert (see Console::time())
+    auto& item = ImplConsole::aTimes(_aTimesPlaceholder)[idx];
     assert(item.nextFree == ATIMENONE);//TODO: AASSERT() or remove?
 
     write(INFO,"Console::timeEnd('{}'): {}", text, PrintableDuration(now - item.began).count());
