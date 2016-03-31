@@ -24,28 +24,26 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #define AASSERT_LVL 4
 #endif
 
-namespace autom
-{
-class AssertionError : public std::exception
-{
-    std::string longMessage;
+namespace autom {
+class AssertionError : public std::exception {
+        std::string longMessage;
 
-public:
-    template< typename... ARGS >
-    AssertionError( const char* cond_, const char* file_, int line_, const char* msg_, const ARGS& ... args ) {
-        longMessage = fmt::format( "Assertion {} failed, file {}, line {} ", cond_, file_, line_ );
-        longMessage.append( fmt::format( msg_, args... ) );
-    }
+    public:
+        template< typename... ARGS >
+        AssertionError( const char* cond_, const char* file_, int line_, const char* msg_, const ARGS& ... args ) {
+            longMessage = fmt::format( "Assertion {} failed, file {}, line {} ", cond_, file_, line_ );
+            longMessage.append( fmt::format( msg_, args... ) );
+            }
 
-    template< typename... ARGS >
-    AssertionError( const char* cond_, const char* file_, int line_ ) {
-        longMessage = fmt::format( "Assertion {} failed, file {}, line {} ", cond_, file_, line_ );
-    }
+        template< typename... ARGS >
+        AssertionError( const char* cond_, const char* file_, int line_ ) {
+            longMessage = fmt::format( "Assertion {} failed, file {}, line {} ", cond_, file_, line_ );
+            }
 
-    const char* what() const noexcept override {
-        return longMessage.c_str();
-    }
-};
+        const char* what() const noexcept override {
+            return longMessage.c_str();
+            }
+    };
 }
 
 #if AASSERT_LVL >= 4

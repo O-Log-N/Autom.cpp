@@ -16,11 +16,11 @@ Copyright (C) 2016 OLogN Technologies AG
 #include "./infra/infraconsole.h"
 #include <chrono>
 
-InfraConsoleWrapper infraConsole;
-
 using Clock = std::chrono::high_resolution_clock;
 using TimePoint = Clock::time_point;
 using PrintableDuration = std::chrono::duration<double, std::milli>;
+
+autom::InfraConsoleWrapper infraConsole;
 
 namespace autom {
 
@@ -30,7 +30,7 @@ Console::TimeLabel Console::timeWithLabel() {
         //moved now() after insert to avoid measuring time of insert()
         it->began = Clock::now();
         return TimeLabel(it - aTimes.begin());
-    }
+        }
 
     assert(firstFreeATime < aTimes.size());//TODO!: remove assert (see Console::time())
     size_t idx = firstFreeATime;
@@ -42,7 +42,7 @@ Console::TimeLabel Console::timeWithLabel() {
     item.nextFree = ATIMENONE;
     item.began = Clock::now();
     return TimeLabel(idx);
-}
+    }
 
 void Console::timeEnd(Console::TimeLabel label, const char* text) {
     //calculating now() right here, to avoid measuring find() function
@@ -59,7 +59,7 @@ void Console::timeEnd(Console::TimeLabel label, const char* text) {
     item.nextFree = firstFreeATime;
     firstFreeATime = idx;
     //} adding item 'idx' to single-linked list
-}
+    }
 
 #ifndef ASTRIP_NODEJS_COMPAT
 //{ NODE.JS COMPATIBILITY HELPERS
@@ -67,7 +67,7 @@ void Console::time(const char* label) {
     auto it = njTimes.insert(std::unordered_map<std::string, TimePoint>::value_type(label, TimePoint())).first;
     //moved now() after insert to avoid measuring time of insert()
     it->second = Clock::now();
-}
+    }
 
 void Console::timeEnd(const char* label) {
     //calculating now() right here, to avoid measuring find() function
@@ -77,20 +77,17 @@ void Console::timeEnd(const char* label) {
     if(found == njTimes.end()) {
         write(ERROR,"Console::timeEnd(): unknown label '{}'", label);
         return;
-    }
+        }
 
     write(INFO,"Console::timeEnd('{}'): {}", label, PrintableDuration(now - found->second).count());
     njTimes.erase(found);
-}
+    }
 //} NODE.JS COMPATIBILITY HELPERS
 #endif
 
 void NodeConsole::formattedWrite( WRITELEVEL lvl, const char* s ) {
     infraConsole.formattedWrite(lvl, s);
-}
-
-}//namespace autom
-
+    }
 
 //NB: MSVC doesn't support single-parameter static_assert() :-(
 static_assert( autom::Console::TRACE == 0, "Console::TRACE==0" );
@@ -111,19 +108,17 @@ static const char* const defaultFmtStrings[] = {
     "ERROR: {}\n",
     "CRITICAL: {}\n",
     "ALERT: {}\n"
-};
+    };
 
-void DefaultConsole::formattedWrite( WRITELEVEL lvl, const char* s )
-{
+void DefaultConsole::formattedWrite( WRITELEVEL lvl, const char* s ) {
     //AASSERT() is probably way too harsh here
     if( lvl >= 0 && lvl < sizeof( defaultFmtStrings ) / sizeof( defaultFmtStrings[0] ) )
         fmt::print( lvl >= ERROR ? std::cerr : std::cout, defaultFmtStrings[lvl], s );
-    else
-    {
+    else {
         fmt::print( std::cerr, "ERROR: DefaultConsole::formattedWrite(): unknown lvl={}, forced to ERROR:\n", lvl );
         fmt::print( std::cerr, "ERROR: {}\n", s );
+        }
     }
-}
 
 void InfraFileConsole::formattedWrite( WRITELEVEL lvl, const char* s ) {
     //AASSERT() is probably way too harsh here
@@ -132,5 +127,7 @@ void InfraFileConsole::formattedWrite( WRITELEVEL lvl, const char* s ) {
     else {
         fmt::print( os, "ERROR: DefaultConsole::formattedWrite(): unknown lvl={}, forced to ERROR:\n", lvl );
         fmt::print( os, "ERROR: {}\n", s );
+        }
     }
-}
+
+}//namespace autom

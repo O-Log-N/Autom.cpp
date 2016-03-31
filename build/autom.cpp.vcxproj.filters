@@ -47,5 +47,11 @@
     <ClInclude Include="..\libsrc\infra\infraconsole.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\include\abuffer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\anode.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>
