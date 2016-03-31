@@ -44,7 +44,7 @@ class ImplConsole {
 };
 
 Console::Console() {
-    new ( &ImplConsole::aTimes(_aTimesPlaceholder) ) ImplConsole::ATimeType();
+    new (_aTimesPlaceholder) ImplConsole::ATimeType();
 }
 
 Console::~Console() {
