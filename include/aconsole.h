@@ -219,7 +219,7 @@ do {\
 		console.write(autom::Console::TRACE,__VA_ARGS__);\
 	} while(0)
 #else
-#define INFRATRACE3(...) ((void)0)
+#define ATRACE3(...) ((void)0)
 #endif
 
 #if ( ATRACE_LVL_MAX >= 2 )
