@@ -16,7 +16,10 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #define ANODE_H
 
 #include <mutex>
+#include <condition_variable>
 #include <deque>
+#include <set>
+#include <thread>
 
 #include "abuffer.h"
 //#include "aconsole.h"
@@ -26,11 +29,13 @@ namespace autom {
 #define EV_FILE_DATA_READY 1
 
 class Node;
+class FS;
 using FutureFunction = std::function< void( void ) >;
 using EventId = unsigned int;
 
 struct NodeQItem {
     EventId id;
+    Node* node;
     Buffer b;
 };
 
@@ -52,30 +57,13 @@ class Node {
     using EventMap = std::unordered_map< EventId, FutureFunction >;
     EventMap eventMap;
 
-    NodeQItem currentData;
-
   public:
-    std::recursive_mutex queueMutex;
-    std::deque<NodeQItem> nodeQueue;
-
+    FS* parentFS;
     void registerFuture( const Future& future, FutureFunction fn ) {
         eventMap.insert( EventMap::value_type( future.getId(), fn ) );
     }
-    const Buffer& value() const {
-        return currentData.b;
-    }
-    void infraProcessEvent() {
-        for( ;; ) {
-            std::lock_guard<std::recursive_mutex> lock( queueMutex );
-            if( nodeQueue.size() ) {
-                currentData.b.move( nodeQueue.front().b );
-                currentData.id = nodeQueue.front().id;
-                nodeQueue.pop_front();
-                break;
-            }
-            _sleep( 0 );
-        }
-        auto it = eventMap.find( currentData.id );
+    void infraProcessEvent( const NodeQItem& item ) {
+        auto it = eventMap.find( item.id );
         if( it != eventMap.end() ) {
             it->second();
         }
@@ -85,34 +73,87 @@ class Node {
 };
 
 void Future::then( FutureFunction fn ) {
-	node->registerFuture( *this, fn );
+    node->registerFuture( *this, fn );
 }
 
-namespace fs {
+class FSQ {
+    std::deque< NodeQItem > q;
+    std::mutex mx;
+    std::condition_variable signal;
 
-void sampleAsyncEvent( Node* node ) {
-    _sleep( 10000 );
-    NodeQItem item;
-    item.id = EV_FILE_DATA_READY;
-    item.b = Buffer( "Hello Node!" );
-    std::lock_guard<std::recursive_mutex> lock( node->queueMutex );
-    node->nodeQueue.push_back( item );
-}
+  public:
+    void push( const NodeQItem& src ) {
+        std::lock_guard< std::mutex > lock( mx );
+        q.push_back( src );
+        signal.notify_one();
+    }
+    bool pop( NodeQItem& dst ) {
+        std::lock_guard< std::mutex > lock( mx );
+        if( q.size() ) {
+            dst = q.front();
+            q.pop_front();
+            return true;
+        }
+        return false;
+    }
+    void wait() {
+        std::unique_lock< std::mutex > lock( mx );
+        signal.wait( lock );
+    }
+};
 
-Future readFile( Node* node, const char* path ) {
-    std::thread th( sampleAsyncEvent, node );
-    th.detach();
-    Future future( node, EV_FILE_DATA_READY );
-    return future;
-}
-}
+class FS {
+    std::set< Node* > nodes;
+    FSQ inputQueue;
+
+  public:
+    void run() {
+        NodeQItem item;
+        while( true ) {
+            while( inputQueue.pop( item ) ) {
+                if( nodes.end() != nodes.find( item.node ) )
+                    if( item.node->parentFS == this )
+                        item.node->infraProcessEvent( item );
+            }
+            inputQueue.wait();
+        }
+    }
+    void pushEvent( const NodeQItem& item ) {
+        inputQueue.push( item );
+    }
+    void addNode( Node* node ) {
+        nodes.insert( node );
+        node->parentFS = this;
+        node->run();
+    }
+    void removeNode( Node* node ) {
+		nodes.erase( node );
+	}
+
+    static void sampleAsyncEvent( Node* node ) {
+        _sleep( 10000 );
+        NodeQItem item;
+        item.id = EV_FILE_DATA_READY;
+        item.b = Buffer( "Hello Node!" );
+        item.node = node;
+        node->parentFS->pushEvent( item );
+    }
+
+    static Future readFile( Node* node, const char* path ) {
+        std::thread th( sampleAsyncEvent, node );
+        th.detach();
+        Future future( node, EV_FILE_DATA_READY );
+        return future;
+    }
+};
 
 class NodeOne : public Node {
   public:
     void run() override {
-        Future data = fs::readFile( this, "some-file-path" );
+        Future data = FS::readFile( this, "some-file-path" );
         data.then( [ = ]() {
-            infraConsole.log( "READ1: {}", value().toString() );
+            infraConsole.log( "READ1: {}", "value().toString()\n" );
+			FS::readFile( this, "some-file-path" );
         } );
     }
 };
@@ -120,9 +161,9 @@ class NodeOne : public Node {
 class NodeTwo : public Node {
   public:
     void run() override {
-        Future data = fs::readFile( this, "some-another-path" );
+        Future data = FS::readFile( this, "some-another-path" );
         data.then( [ = ]() {
-            infraConsole.log( "READ2: {}", value().toString() );
+            infraConsole.log( "READ2: {}", "value().toString()\n" );
         } );
     }
 };

@@ -7,7 +7,6 @@
 #include "../include/anode.h"
 #include "../libsrc/infra/infraconsole.h"
 
-
 using namespace std;
 using namespace autom;
 
@@ -15,13 +14,10 @@ NodeConsoleWrapper console;
 
 int main() {
     try {
-        NodeOne node1;
-        node1.run();
-        NodeTwo node2;
-        node2.run();
-
-        node2.infraProcessEvent();
-        node1.infraProcessEvent();
+        FS fs;
+        fs.addNode( new NodeOne );
+        fs.addNode( new NodeTwo );
+        fs.run();
 
         console.trace( "Starting..." );
         console.assignNewConsole( unique_ptr<NodeConsole>( new NodeConsole ) );
