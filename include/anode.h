@@ -26,55 +26,55 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #include "../libsrc/infra/infraconsole.h"
 
 namespace autom {
-#define EV_FILE_DATA_READY 1
 
 class Node;
 class FS;
 using FutureFunction = std::function< void( void ) >;
-using EventId = unsigned int;
+using FutureId = unsigned int;
 
 struct NodeQItem {
-    EventId id;
+    FutureId id;
     Node* node;
     Buffer b;
 };
 
 class Future {
-    EventId eventId;
+    FutureId futureId;
     Node* node;
 
   public:
-    Future( Node* node_, EventId id_ ) : node( node_ ), eventId( id_ ) {
-    }
+    Future( Node* node_ );
 
-    EventId getId() const {
-        return eventId;
+    FutureId getId() const {
+        return futureId;
     }
     void then( FutureFunction fn );
+    const Buffer& value() const;
 };
 
 class Node {
-    using EventMap = std::unordered_map< EventId, FutureFunction >;
-    EventMap eventMap;
+    struct InfraFuture {
+        FutureFunction fn;
+        Buffer result;
+    };
+    using FutureMap = std::unordered_map< FutureId, InfraFuture >;
+    FutureMap futureMap;
+    FutureId futureCount = 0;
 
   public:
     FS* parentFS;
-    void registerFuture( const Future& future, FutureFunction fn ) {
-        eventMap.insert( EventMap::value_type( future.getId(), fn ) );
+    void registerFuture( FutureId id, FutureFunction fn ) {
+        InfraFuture inf;
+        inf.fn = fn;
+        futureMap.insert( FutureMap::value_type( id, inf ) );
     }
-    void infraProcessEvent( const NodeQItem& item ) {
-        auto it = eventMap.find( item.id );
-        if( it != eventMap.end() ) {
-            it->second();
-        }
+    void infraProcessEvent( const NodeQItem& item );
+    FutureId nextFutureId() {
+        return ++futureCount;
     }
-
+    const Buffer& findResult( FutureId id ) const;
     virtual void run() = 0;
 };
-
-void Future::then( FutureFunction fn ) {
-    node->registerFuture( *this, fn );
-}
 
 class FSQ {
     std::deque< NodeQItem > q;
@@ -107,17 +107,7 @@ class FS {
     FSQ inputQueue;
 
   public:
-    void run() {
-        NodeQItem item;
-        while( true ) {
-            while( inputQueue.pop( item ) ) {
-                if( nodes.end() != nodes.find( item.node ) )
-                    if( item.node->parentFS == this )
-                        item.node->infraProcessEvent( item );
-            }
-            inputQueue.wait();
-        }
-    }
+    void run();
     void pushEvent( const NodeQItem& item ) {
         inputQueue.push( item );
     }
@@ -127,43 +117,24 @@ class FS {
         node->run();
     }
     void removeNode( Node* node ) {
-		nodes.erase( node );
-	}
-
-    static void sampleAsyncEvent( Node* node ) {
-        _sleep( 10000 );
-        NodeQItem item;
-        item.id = EV_FILE_DATA_READY;
-        item.b = Buffer( "Hello Node!" );
-        item.node = node;
-        node->parentFS->pushEvent( item );
+        nodes.erase( node );
     }
 
-    static Future readFile( Node* node, const char* path ) {
-        std::thread th( sampleAsyncEvent, node );
-        th.detach();
-        Future future( node, EV_FILE_DATA_READY );
-        return future;
-    }
+    static void sampleAsyncEvent( Node* node, FutureId id );
+    static Future readFile( Node* node, const char* path );
 };
 
 class NodeOne : public Node {
   public:
     void run() override {
-        Future data = FS::readFile( this, "some-file-path" );
+        std::string fname( "some-file-path" );
+        Future data = FS::readFile( this, fname.c_str() );
         data.then( [ = ]() {
-            infraConsole.log( "READ1: {}", "value().toString()\n" );
-			FS::readFile( this, "some-file-path" );
-        } );
-    }
-};
-
-class NodeTwo : public Node {
-  public:
-    void run() override {
-        Future data = FS::readFile( this, "some-another-path" );
-        data.then( [ = ]() {
-            infraConsole.log( "READ2: {}", "value().toString()\n" );
+            infraConsole.log( "READ1: file {}---{}", fname.c_str(), data.value().toString() );
+            Future data2 = FS::readFile( this, "some-another-path" );
+            data2.then( [ = ]() {
+                infraConsole.log( "READ2: {} : {}", data.value().toString(), data2.value().toString() );
+            } );
         } );
     }
 };

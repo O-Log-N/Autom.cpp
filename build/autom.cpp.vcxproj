@@ -157,6 +157,7 @@
   <ItemGroup>
     <ClCompile Include="..\3rdparty\cppformat\cppformat\format.cc" />
     <ClCompile Include="..\libsrc\aconsole.cpp" />
+    <ClCompile Include="..\libsrc\anode.cpp" />
     <ClCompile Include="..\test\main.cpp" />
   </ItemGroup>
   <ItemGroup>

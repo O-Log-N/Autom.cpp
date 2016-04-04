@@ -16,7 +16,6 @@ int main() {
     try {
         FS fs;
         fs.addNode( new NodeOne );
-        fs.addNode( new NodeTwo );
         fs.run();
 
         console.trace( "Starting..." );
