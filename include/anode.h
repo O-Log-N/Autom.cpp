@@ -39,17 +39,24 @@ struct NodeQItem {
     Buffer b;
 };
 
+struct InfraFuture {
+    FutureFunction fn;
+    int refCount;
+    Buffer result;
+};
+
 class Future {
     FutureId futureId;
     Node* node;
+    InfraFuture* infraPtr;
 
   public:
     Future( Node* );
     Future( const Future& );
     Future( Future&& );
-    Future& operator=( const Future& ) = delete;
+    Future& operator=( const Future& );
     virtual ~Future();
-    void then( FutureFunction );
+    void then( const FutureFunction& );
     FutureId getId() const {
         return futureId;
     }
@@ -57,46 +64,26 @@ class Future {
 };
 
 class Node {
-    struct InfraFuture {
-        FutureFunction fn;
-        int refCount;
-        Buffer result;
-    };
     using FutureMap = std::unordered_map< FutureId, InfraFuture >;
     FutureMap futureMap;
     FutureId nextFutureIdCount = 0;
 
   public:
     FS* parentFS;
-    void registerCallback( FutureId id, const FutureFunction fn ) {
-        auto it = futureMap.find( id );
-        if( it != futureMap.end() ) {
-            it->second.fn = fn;
-        }
-    }
 
-    void insertFuture( FutureId id ) {
+    InfraFuture& insertInfraFuture( FutureId id ) {
         InfraFuture inf;
         inf.refCount = 1;
-        bool unique = futureMap.insert( FutureMap::value_type( id, inf ) ).second;
-        AASSERT4( unique );
+        auto p = futureMap.insert( FutureMap::value_type( id, inf ) );
+        AASSERT4( p.second, "Duplicated FutureId" );
+        return p.first->second;
     }
 
-    void removeFuture( FutureId id ) {
-        size_t n = futureMap.erase( id );
-        AASSERT4( n == 1 );
-    }
-
-    void futureAddRef( FutureId id ) {
+    InfraFuture* findInfraFuture( FutureId id ) {
         auto it = futureMap.find( id );
-        AASSERT4( it != futureMap.end() );
-        it->second.refCount++;
-    }
-
-    void futureDecRef( FutureId id ) {
-        auto it = futureMap.find( id );
-        AASSERT4( it != futureMap.end() );
-        it->second.refCount--;
+        if( it != futureMap.end() )
+            return &( it->second );
+        return nullptr;
     }
 
     void futureCleanup() {
@@ -109,18 +96,17 @@ class Node {
         }
     }
 
+    void infraProcessEvent( const NodeQItem & item );
+    FutureId nextFutureId() {
+        return ++nextFutureIdCount;
+    }
+    virtual void run() = 0;
+
     void debugDump() const {
         INFRATRACE0( "futures {}", futureMap.size() );
         for( auto it = futureMap.cbegin(); it != futureMap.cend(); ++it )
             INFRATRACE0( "  #{} refcnt {} '{}'", it->first, it->second.refCount, it->second.result.toString() );
     }
-
-    void infraProcessEvent( const NodeQItem & item );
-    FutureId nextFutureId() {
-        return ++nextFutureIdCount;
-    }
-    const Buffer& findResult( FutureId id ) const;
-    virtual void run() = 0;
 };
 
 class FSQ {
@@ -163,9 +149,6 @@ class FS {
         node->parentFS = this;
         node->run();
     }
-//    void removeNode( Node* node ) {
-//       nodes.erase( node );
-//    }
 
     void debugDump( int line ) const {
         INFRATRACE0( "line {} Nodes: {} ----------", line, nodes.size() );

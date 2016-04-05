@@ -19,29 +19,42 @@ using namespace autom;
 
 Future::Future( Node* node_ ) : node( node_ ) {
     futureId = node->nextFutureId();
-    node->insertFuture( futureId );
+    infraPtr = &( node->insertInfraFuture( futureId ) );
 }
 
 Future::Future( const Future& other ) :
-    futureId( other.futureId ), node( other.node ) {
-    node->futureAddRef( futureId );
+    futureId( other.futureId ), node( other.node ), infraPtr( other.infraPtr ) {
+    AASSERT4( infraPtr == node->findInfraFuture( futureId ) );
+    infraPtr->refCount++;
+}
+
+Future& Future::operator=( const Future& other ) {
+    futureId = other.futureId;
+    node = other.node;
+    infraPtr = other.infraPtr;
+    AASSERT4( infraPtr == node->findInfraFuture( futureId ) );
+    infraPtr->refCount++;
+    return *this;
 }
 
 Future::Future( Future&& other ) :
-    futureId( other.futureId ), node( other.node ) {
-    node->futureAddRef( futureId );
+    futureId( other.futureId ), node( other.node ), infraPtr( other.infraPtr ) {
+    AASSERT4( infraPtr == node->findInfraFuture( futureId ) );
+    infraPtr->refCount++;
 }
 
 Future::~Future() {
-    node->futureDecRef( futureId );
+    infraPtr->refCount--;
 }
 
-void Future::then( FutureFunction fn ) {
-    node->registerCallback( getId(), fn );
+void Future::then( const FutureFunction& fn ) {
+    AASSERT4( infraPtr == node->findInfraFuture( futureId ) );
+    infraPtr->fn = fn;
 }
 
 const Buffer& Future::value() const {
-    return node->findResult( futureId );
+    AASSERT4( infraPtr == node->findInfraFuture( futureId ) );
+    return infraPtr->result;
 }
 
 void Node::infraProcessEvent( const NodeQItem& item ) {
@@ -52,13 +65,6 @@ void Node::infraProcessEvent( const NodeQItem& item ) {
         it->second.fn = FutureFunction();
         futureCleanup();
     }
-}
-
-const Buffer& Node::findResult( FutureId id ) const {
-    auto it = futureMap.find( id );
-    if( it != futureMap.end() )
-        return it->second.result;
-    AASSERT0( 0 );
 }
 
 void FS::run() {
