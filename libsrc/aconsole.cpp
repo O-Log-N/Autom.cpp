@@ -32,7 +32,6 @@ Console::TimeLabel Console::timeWithLabel() {
         return TimeLabel( it - aTimes.begin() );
     }
 
-    assert( firstFreeATime < aTimes.size() ); //TODO!: remove assert (see Console::time())
     size_t idx = firstFreeATime;
     auto& item = aTimes[idx];
 
@@ -49,9 +48,7 @@ void Console::timeEnd( Console::TimeLabel label, const char* text ) {
     TimePoint now = Clock::now();
 
     size_t idx = label.idx;
-    assert( idx < aTimes.size() ); //TODO!: remove assert (see Console::time())
     auto& item = aTimes[idx];
-    assert( item.nextFree == ATIMENONE ); //TODO: AASSERT() or remove?
 
     write( INFO, "Console::timeEnd('{}'): {}", text, PrintableDuration( now - item.began ).count() );
 

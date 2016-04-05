@@ -19,21 +19,21 @@ using namespace autom;
 
 Future::Future( Node* node_ ) : node( node_ ) {
     futureId = node->nextFutureId();
-    node->addRef( futureId );
+    node->insertFuture( futureId );
 }
 
 Future::Future( const Future& other ) :
     futureId( other.futureId ), node( other.node ) {
-    node->addRef( futureId );
+    node->futureAddRef( futureId );
 }
 
 Future::Future( Future&& other ) :
     futureId( other.futureId ), node( other.node ) {
-    node->addRef( futureId );
+    node->futureAddRef( futureId );
 }
 
 Future::~Future() {
-    node->remove( futureId );
+    node->futureDecRef( futureId );
 }
 
 void Future::then( FutureFunction fn ) {
@@ -49,8 +49,8 @@ void Node::infraProcessEvent( const NodeQItem& item ) {
     if( it != futureMap.end() ) {
         it->second.result = item.b;
         it->second.fn();
-		FutureFunction fn = it->second.fn;
-		it->second.fn = FutureFunction();
+        it->second.fn = FutureFunction();
+        futureCleanup();
     }
 }
 

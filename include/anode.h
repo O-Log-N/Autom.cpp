@@ -74,25 +74,38 @@ class Node {
             it->second.fn = fn;
         }
     }
-    void addRef( FutureId id ) {
-        auto it = futureMap.find( id );
-        if( it == futureMap.end() ) {
-            InfraFuture inf;
-            inf.refCount = 1;
-            futureMap.insert( FutureMap::value_type( id, inf ) );
-        } else {
-            it->second.refCount++;
-        }
+
+    void insertFuture( FutureId id ) {
+        InfraFuture inf;
+        inf.refCount = 1;
+        bool unique = futureMap.insert( FutureMap::value_type( id, inf ) ).second;
+        AASSERT4( unique );
     }
 
-    void remove( FutureId id ) {
+    void removeFuture( FutureId id ) {
+        size_t n = futureMap.erase( id );
+        AASSERT4( n == 1 );
+    }
+
+    void futureAddRef( FutureId id ) {
         auto it = futureMap.find( id );
-        if( it != futureMap.end() ) {
-            it->second.refCount--;
+        AASSERT4( it != futureMap.end() );
+        it->second.refCount++;
+    }
+
+    void futureDecRef( FutureId id ) {
+        auto it = futureMap.find( id );
+        AASSERT4( it != futureMap.end() );
+        it->second.refCount--;
+    }
+
+    void futureCleanup() {
+        for( auto it = futureMap.begin(); it != futureMap.end(); ) {
+            AASSERT4( it->second.refCount >= 0 );
             if( it->second.refCount <= 0 )
-                futureMap.erase( it );
-        } else {
-            AASSERT0( 0 );
+                futureMap.erase( it++ );
+            else
+                ++it;
         }
     }
 
@@ -175,8 +188,8 @@ class NodeOne : public Node {
             Future data2 = FS::readFile( this, "some-another-path" );
             data2.then( [ = ]() {
                 infraConsole.log( "READ2: {} : {}", data.value().toString(), data2.value().toString() );
-				parentFS->debugDump( __LINE__ );
-			} );
+                parentFS->debugDump( __LINE__ );
+            } );
         } );
     }
 };
