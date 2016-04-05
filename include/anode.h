@@ -24,6 +24,7 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #include "abuffer.h"
 //#include "aconsole.h"
 #include "../libsrc/infra/infraconsole.h"
+#include "aassert.h"
 
 namespace autom {
 
@@ -43,34 +44,67 @@ class Future {
     Node* node;
 
   public:
-    Future( Node* node_ );
-
+    Future( Node* );
+    Future( const Future& );
+    Future( Future&& );
+    Future& operator=( const Future& ) = delete;
+    virtual ~Future();
+    void then( FutureFunction );
     FutureId getId() const {
         return futureId;
     }
-    void then( FutureFunction fn );
     const Buffer& value() const;
 };
 
 class Node {
     struct InfraFuture {
         FutureFunction fn;
+        int refCount;
         Buffer result;
     };
     using FutureMap = std::unordered_map< FutureId, InfraFuture >;
     FutureMap futureMap;
-    FutureId futureCount = 0;
+    FutureId nextFutureIdCount = 0;
 
   public:
     FS* parentFS;
-    void registerFuture( FutureId id, FutureFunction fn ) {
-        InfraFuture inf;
-        inf.fn = fn;
-        futureMap.insert( FutureMap::value_type( id, inf ) );
+    void registerCallback( FutureId id, const FutureFunction fn ) {
+        auto it = futureMap.find( id );
+        if( it != futureMap.end() ) {
+            it->second.fn = fn;
+        }
     }
-    void infraProcessEvent( const NodeQItem& item );
+    void addRef( FutureId id ) {
+        auto it = futureMap.find( id );
+        if( it == futureMap.end() ) {
+            InfraFuture inf;
+            inf.refCount = 1;
+            futureMap.insert( FutureMap::value_type( id, inf ) );
+        } else {
+            it->second.refCount++;
+        }
+    }
+
+    void remove( FutureId id ) {
+        auto it = futureMap.find( id );
+        if( it != futureMap.end() ) {
+            it->second.refCount--;
+            if( it->second.refCount <= 0 )
+                futureMap.erase( it );
+        } else {
+            AASSERT0( 0 );
+        }
+    }
+
+    void debugDump() const {
+        INFRATRACE0( "futures {}", futureMap.size() );
+        for( auto it = futureMap.cbegin(); it != futureMap.cend(); ++it )
+            INFRATRACE0( "  #{} refcnt {} '{}'", it->first, it->second.refCount, it->second.result.toString() );
+    }
+
+    void infraProcessEvent( const NodeQItem & item );
     FutureId nextFutureId() {
-        return ++futureCount;
+        return ++nextFutureIdCount;
     }
     const Buffer& findResult( FutureId id ) const;
     virtual void run() = 0;
@@ -116,8 +150,15 @@ class FS {
         node->parentFS = this;
         node->run();
     }
-    void removeNode( Node* node ) {
-        nodes.erase( node );
+//    void removeNode( Node* node ) {
+//       nodes.erase( node );
+//    }
+
+    void debugDump( int line ) const {
+        INFRATRACE0( "line {} Nodes: {} ----------", line, nodes.size() );
+        for( auto it = nodes.begin(); it != nodes.end(); ++it ) {
+            ( *it )->debugDump();
+        }
     }
 
     static void sampleAsyncEvent( Node* node, FutureId id );
@@ -134,7 +175,8 @@ class NodeOne : public Node {
             Future data2 = FS::readFile( this, "some-another-path" );
             data2.then( [ = ]() {
                 infraConsole.log( "READ2: {} : {}", data.value().toString(), data2.value().toString() );
-            } );
+				parentFS->debugDump( __LINE__ );
+			} );
         } );
     }
 };

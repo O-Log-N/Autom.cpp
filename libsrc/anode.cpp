@@ -19,10 +19,25 @@ using namespace autom;
 
 Future::Future( Node* node_ ) : node( node_ ) {
     futureId = node->nextFutureId();
+    node->addRef( futureId );
+}
+
+Future::Future( const Future& other ) :
+    futureId( other.futureId ), node( other.node ) {
+    node->addRef( futureId );
+}
+
+Future::Future( Future&& other ) :
+    futureId( other.futureId ), node( other.node ) {
+    node->addRef( futureId );
+}
+
+Future::~Future() {
+    node->remove( futureId );
 }
 
 void Future::then( FutureFunction fn ) {
-    node->registerFuture( getId(), fn );
+    node->registerCallback( getId(), fn );
 }
 
 const Buffer& Future::value() const {
@@ -34,7 +49,8 @@ void Node::infraProcessEvent( const NodeQItem& item ) {
     if( it != futureMap.end() ) {
         it->second.result = item.b;
         it->second.fn();
-//		futureMap.erase( it );
+		FutureFunction fn = it->second.fn;
+		it->second.fn = FutureFunction();
     }
 }
 
@@ -53,6 +69,7 @@ void FS::run() {
                 if( item.node->parentFS == this )
                     item.node->infraProcessEvent( item );
         }
+        debugDump( __LINE__ );
         inputQueue.wait();
     }
 }

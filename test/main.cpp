@@ -15,7 +15,8 @@ NodeConsoleWrapper console;
 int main() {
     try {
         FS fs;
-        fs.addNode( new NodeOne );
+        Node* p = new NodeOne;
+        fs.addNode( p );
         fs.run();
 
         console.trace( "Starting..." );
