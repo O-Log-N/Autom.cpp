@@ -54,7 +54,7 @@ class Future {
     Future( const Future& );
     Future( Future&& );
     Future& operator=( const Future& );
-    virtual ~Future();
+    ~Future();
     void then( const FutureFunction& );
     FutureId getId() const {
         return futureId;
@@ -89,7 +89,7 @@ class Node {
         for( auto it = futureMap.begin(); it != futureMap.end(); ) {
             AASSERT4( it->second.refCount >= 0 );
             if( it->second.refCount <= 0 )
-                futureMap.erase( it++ );
+                it = futureMap.erase( it );
             else
                 ++it;
         }
@@ -103,8 +103,8 @@ class Node {
 
     void debugDump() const {
         INFRATRACE0( "futures {}", futureMap.size() );
-        for( auto it = futureMap.cbegin(); it != futureMap.cend(); ++it )
-            INFRATRACE0( "  #{} refcnt {} '{}'", it->first, it->second.refCount, it->second.result.toString() );
+        for( auto& it : futureMap )
+            INFRATRACE0( "  #{} refcnt {} '{}'", it.first, it.second.refCount, it.second.result.toString() );
     }
 };
 
@@ -151,8 +151,8 @@ class FS {
 
     void debugDump( int line ) const {
         INFRATRACE0( "line {} Nodes: {} ----------", line, nodes.size() );
-        for( auto it = nodes.begin(); it != nodes.end(); ++it ) {
-            ( *it )->debugDump();
+        for( auto it : nodes ) {
+            it->debugDump();
         }
     }
 
@@ -170,7 +170,6 @@ class NodeOne : public Node {
             Future data2 = FS::readFile( this, "some-another-path" );
             data2.then( [ = ]() {
                 infraConsole.log( "READ2: {} : {}", data.value().toString(), data2.value().toString() );
-                parentFS->debugDump( __LINE__ );
             } );
         } );
     }

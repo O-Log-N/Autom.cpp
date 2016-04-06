@@ -105,4 +105,4 @@ Naming conventions examples:
 1. All the C++ files SHOULD be run through astyle before committing to develop branch
     - it is normally NOT necessary for checkins within feature branches
 2. Preferred astyle version: 2.05
-3. astyle Options: none at the moment (everything goes by default)
+3. astyle Options: -A14 -p -D
