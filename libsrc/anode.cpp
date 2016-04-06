@@ -62,7 +62,14 @@ void Node::infraProcessEvent( const NodeQItem& item ) {
     if( it != futureMap.end() ) {
         it->second.result = item.b;
         it->second.fn();
+        
         it->second.fn = FutureFunction();
+        //The line above effectively destroys existing lambda it->second.fn
+        //  First, we CAN do it, as we don't need second.fn anymore at all
+        //  Second, we SHOULD do it, to avoid cyclical references from lambda 
+        //    to our InfraFutures, which will prevent futureCleanup() from 
+        //    destroying InfraFuture - EVER
+        
         futureCleanup();
     }
 }
