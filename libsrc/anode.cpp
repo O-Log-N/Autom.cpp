@@ -62,7 +62,7 @@ void Node::infraProcessEvent( const NodeQItem& item ) {
     if( it != futureMap.end() ) {
         it->second.result = item.b;
         it->second.fn();
-        it->second.fn.~FutureFunction();
+        it->second.fn = FutureFunction();
         futureCleanup();
     }
 }
