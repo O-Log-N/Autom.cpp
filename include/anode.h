@@ -19,7 +19,6 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #include <condition_variable>
 #include <deque>
 #include <set>
-#include <thread>
 
 #include "abuffer.h"
 //#include "aconsole.h"

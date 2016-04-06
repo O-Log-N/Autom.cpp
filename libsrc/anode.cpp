@@ -62,7 +62,7 @@ void Node::infraProcessEvent( const NodeQItem& item ) {
     if( it != futureMap.end() ) {
         it->second.result = item.b;
         it->second.fn();
-        it->second.fn = FutureFunction();
+        it->second.fn.~FutureFunction();
         futureCleanup();
     }
 }
@@ -80,8 +80,11 @@ void FS::run() {
     }
 }
 
+#include <chrono>
+#include <thread>
+
 void FS::sampleAsyncEvent( Node* node, FutureId id ) {
-    _sleep( 10000 );
+    std::this_thread::sleep_for( std::chrono::seconds( 10 ) );
     std::string s( fmt::format( "Hello Future {}!", id ) );
     NodeQItem item;
     item.id = id;
