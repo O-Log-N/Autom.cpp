@@ -15,9 +15,13 @@ NodeConsoleWrapper console;
 int main() {
     try {
         FS fs;
-        Node* p = new NodeOne;
-        fs.addNode( p );
-        fs.run();
+        for( ;; ) {
+            Node* p = new NodeOne;
+            fs.addNode( p );
+            fs.run();
+            fs.removeNode( p );
+            delete p;
+        }
 
         console.trace( "Starting..." );
         console.assignNewConsole( unique_ptr<NodeConsole>( new NodeConsole ) );

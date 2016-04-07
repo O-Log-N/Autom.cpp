@@ -38,10 +38,31 @@ struct NodeQItem {
     Buffer b;
 };
 
-struct InfraFuture {
+class InfraFutureBase {
+  public:
     FutureFunction fn;
     int refCount;
+
+    InfraFutureBase() {
+        refCount = 1;
+    }
+    virtual ~InfraFutureBase() {}
+    virtual void debugDump() const = 0;
+};
+
+class InfraFuture : public InfraFutureBase {
     Buffer result;
+
+  public:
+    const Buffer& getResult() const {
+        return result;
+    }
+    void setResult( const Buffer& b ) {
+        result = b;
+    }
+    void debugDump() const {
+        INFRATRACE0( "    refcnt {} '{}'", refCount, result.toString() );
+    }
 };
 
 class Future {
@@ -63,32 +84,30 @@ class Future {
 };
 
 class Node {
-    using FutureMap = std::unordered_map< FutureId, InfraFuture >;
+    using FutureMap = std::unordered_map< FutureId, std::unique_ptr< InfraFutureBase > >;
     FutureMap futureMap;
     FutureId nextFutureIdCount = 0;
 
   public:
     FS* parentFS;
 
-    InfraFuture& insertInfraFuture( FutureId id ) {
-        InfraFuture inf;
-        inf.refCount = 1;
-        auto p = futureMap.insert( FutureMap::value_type( id, inf ) );
+    InfraFutureBase* insertInfraFuture( FutureId id ) {
+        auto p = futureMap.insert( FutureMap::value_type( id, std::unique_ptr< InfraFutureBase >( new InfraFuture ) ) );
         AASSERT4( p.second, "Duplicated FutureId" );
-        return p.first->second;
+        return p.first->second.get();
     }
 
-    InfraFuture* findInfraFuture( FutureId id ) {
+    InfraFutureBase* findInfraFuture( FutureId id ) {
         auto it = futureMap.find( id );
         if( it != futureMap.end() )
-            return &( it->second );
+            return it->second.get();
         return nullptr;
     }
 
     void futureCleanup() {
         for( auto it = futureMap.begin(); it != futureMap.end(); ) {
-            AASSERT4( it->second.refCount >= 0 );
-            if( it->second.refCount <= 0 )
+            AASSERT4( it->second->refCount >= 0 );
+            if( it->second->refCount <= 0 )
                 it = futureMap.erase( it );
             else
                 ++it;
@@ -96,15 +115,23 @@ class Node {
     }
 
     void infraProcessEvent( const NodeQItem & item );
+
     FutureId nextFutureId() {
         return ++nextFutureIdCount;
     }
+
     virtual void run() = 0;
+
+    bool isEmpty() const {
+        return futureMap.size() == 0;
+    }
 
     void debugDump() const {
         INFRATRACE0( "futures {}", futureMap.size() );
-        for( auto& it : futureMap )
-            INFRATRACE0( "  #{} refcnt {} '{}'", it.first, it.second.refCount, it.second.result.toString() );
+        for( auto& it : futureMap ) {
+            INFRATRACE0( "  #{}", it.first );
+            it.second->debugDump();
+        }
     }
 };
 
@@ -138,6 +165,8 @@ class FS {
     std::set< Node* > nodes;
     FSQ inputQueue;
 
+    bool isEmpty() const;
+
   public:
     void run();
     void pushEvent( const NodeQItem& item ) {
@@ -148,7 +177,10 @@ class FS {
         node->parentFS = this;
         node->run();
     }
-
+    void removeNode( Node* node ) {
+        AASSERT4( node->isEmpty() );
+        nodes.erase( node );
+    }
     void debugDump( int line ) const {
         INFRATRACE0( "line {} Nodes: {} ----------", line, nodes.size() );
         for( auto it : nodes ) {
@@ -163,13 +195,17 @@ class FS {
 class NodeOne : public Node {
   public:
     void run() override {
-        std::string fname( "some-file-path" );
+        std::string fname( "path1" );
         Future data = FS::readFile( this, fname.c_str() );
         data.then( [ = ]() {
             infraConsole.log( "READ1: file {}---{}", fname.c_str(), data.value().toString() );
-            Future data2 = FS::readFile( this, "some-another-path" );
+            Future data2 = FS::readFile( this, "path2" );
             data2.then( [ = ]() {
                 infraConsole.log( "READ2: {} : {}", data.value().toString(), data2.value().toString() );
+                Future data3 = FS::readFile( this, "path3" );
+                data3.then( [ = ]() {
+                    infraConsole.log( "READ3: {} : {}", data.value().toString(), data3.value().toString() );
+                } );
             } );
         } );
     }

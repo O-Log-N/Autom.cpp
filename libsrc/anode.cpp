@@ -19,7 +19,7 @@ using namespace autom;
 
 Future::Future( Node* node_ ) : node( node_ ) {
     futureId = node->nextFutureId();
-    infraPtr = &( node->insertInfraFuture( futureId ) );
+    infraPtr = static_cast< InfraFuture* >( node->insertInfraFuture( futureId ) );
 }
 
 Future::Future( const Future& other ) :
@@ -54,16 +54,16 @@ void Future::then( const FutureFunction& fn ) {
 
 const Buffer& Future::value() const {
     AASSERT4( infraPtr == node->findInfraFuture( futureId ) );
-    return infraPtr->result;
+    return infraPtr->getResult();
 }
 
 void Node::infraProcessEvent( const NodeQItem& item ) {
     auto it = futureMap.find( item.id );
     if( it != futureMap.end() ) {
-        it->second.result = item.b;
-        it->second.fn();
+        static_cast< InfraFuture* >( it->second.get() )->setResult( item.b );
+        it->second->fn();
 
-        it->second.fn = FutureFunction();
+        it->second->fn = FutureFunction();
         //The line above effectively destroys existing lambda it->second.fn
         //  First, we CAN do it, as we don't need second.fn anymore at all
         //  Second, we SHOULD do it, to avoid cyclical references from lambda
@@ -72,6 +72,13 @@ void Node::infraProcessEvent( const NodeQItem& item ) {
 
         futureCleanup();
     }
+}
+
+bool FS::isEmpty() const {
+    for( auto it : nodes )
+        if( !it->isEmpty() )
+            return false;
+    return true;
 }
 
 void FS::run() {
@@ -83,6 +90,8 @@ void FS::run() {
             item.node->infraProcessEvent( item );
         }
         debugDump( __LINE__ );
+        if( isEmpty() )
+            break;
         inputQueue.wait();
     }
 }
@@ -91,7 +100,7 @@ void FS::run() {
 #include <thread>
 
 void FS::sampleAsyncEvent( Node* node, FutureId id ) {
-    std::this_thread::sleep_for( std::chrono::seconds( 10 ) );
+    std::this_thread::sleep_for( std::chrono::seconds( 2 ) );
     std::string s( fmt::format( "Hello Future {}!", id ) );
     NodeQItem item;
     item.id = id;
