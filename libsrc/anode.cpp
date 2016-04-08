@@ -17,50 +17,10 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 
 using namespace autom;
 
-Future::Future( Node* node_ ) : node( node_ ) {
-    futureId = node->nextFutureId();
-    infraPtr = static_cast< InfraFuture* >( node->insertInfraFuture( futureId ) );
-}
-
-Future::Future( const Future& other ) :
-    futureId( other.futureId ), node( other.node ), infraPtr( other.infraPtr ) {
-    AASSERT4( infraPtr == node->findInfraFuture( futureId ) );
-    infraPtr->refCount++;
-}
-
-Future& Future::operator=( const Future& other ) {
-    futureId = other.futureId;
-    node = other.node;
-    infraPtr = other.infraPtr;
-    AASSERT4( infraPtr == node->findInfraFuture( futureId ) );
-    infraPtr->refCount++;
-    return *this;
-}
-
-Future::Future( Future&& other ) :
-    futureId( other.futureId ), node( other.node ), infraPtr( other.infraPtr ) {
-    AASSERT4( infraPtr == node->findInfraFuture( futureId ) );
-    infraPtr->refCount++;
-}
-
-Future::~Future() {
-    infraPtr->refCount--;
-}
-
-void Future::then( const FutureFunction& fn ) {
-    AASSERT4( infraPtr == node->findInfraFuture( futureId ) );
-    infraPtr->fn = fn;
-}
-
-const Buffer& Future::value() const {
-    AASSERT4( infraPtr == node->findInfraFuture( futureId ) );
-    return infraPtr->getResult();
-}
-
 void Node::infraProcessEvent( const NodeQItem& item ) {
     auto it = futureMap.find( item.id );
     if( it != futureMap.end() ) {
-        static_cast< InfraFuture* >( it->second.get() )->setResult( item.b );
+        it->second->setResult( item.b );
         it->second->fn();
 
         it->second->fn = FutureFunction();
@@ -104,16 +64,15 @@ void FS::sampleAsyncEvent( Node* node, FutureId id ) {
     std::string s( fmt::format( "Hello Future {}!", id ) );
     NodeQItem item;
     item.id = id;
-    item.b = Buffer( s.c_str() );
+    item.b = NetworkBuffer( s.c_str() );
     item.node = node;
     node->parentFS->pushEvent( item );
 }
 
-Future FS::readFile( Node* node, const char* path ) {
-    Future future( node );
+Future< Buffer > FS::readFile( Node* node, const char* path ) {
+    Future< Buffer > future( node );
     std::thread th( sampleAsyncEvent, node, future.getId() );
     th.detach();
     return future;
 }
-
 

@@ -19,6 +19,9 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #include <string>
 
 namespace autom {
+
+using NetworkBuffer = std::string;
+
 class Buffer {
     std::string s;
 
@@ -34,8 +37,8 @@ class Buffer {
     Buffer& operator=( const Buffer& ) = default;
     Buffer& operator=( Buffer&& ) = default;
 
-    void move( Buffer& other ) {
-        s = std::move( other.s );
+    void fromNetwork( const NetworkBuffer& b ) {
+        s = b;
     }
 };
 }

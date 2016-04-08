@@ -35,7 +35,7 @@ using FutureId = unsigned int;
 struct NodeQItem {
     FutureId id;
     Node* node;
-    Buffer b;
+    NetworkBuffer b;
 };
 
 class InfraFutureBase {
@@ -43,35 +43,35 @@ class InfraFutureBase {
     FutureFunction fn;
     int refCount;
 
-    InfraFutureBase() {
-        refCount = 1;
-    }
     virtual ~InfraFutureBase() {}
+    virtual void setResult( const NetworkBuffer& b ) = 0;
     virtual void debugDump() const = 0;
 };
 
+template< typename T >
 class InfraFuture : public InfraFutureBase {
-    Buffer result;
+    T result;
 
   public:
-    const Buffer& getResult() const {
+    const T& getResult() const {
         return result;
     }
-    void setResult( const Buffer& b ) {
-        result = b;
+    void setResult( const NetworkBuffer& b ) override {
+        result.fromNetwork( b );
     }
     void debugDump() const {
         INFRATRACE0( "    refcnt {} '{}'", refCount, result.toString() );
     }
 };
 
+template< typename T >
 class Future {
     FutureId futureId;
     Node* node;
-    InfraFuture* infraPtr;
+    InfraFuture< T >* infraPtr;
 
   public:
-    Future( Node* );
+    explicit Future( Node* );
     Future( const Future& );
     Future( Future&& );
     Future& operator=( const Future& );
@@ -80,8 +80,56 @@ class Future {
     FutureId getId() const {
         return futureId;
     }
-    const Buffer& value() const;
+    const T& value() const;
 };
+
+template< typename T >
+Future< T >::Future( Node* node_ ) : node( node_ ) {
+    futureId = node->nextFutureId();
+    infraPtr = static_cast< InfraFuture< T >* >( node->insertInfraFuture( futureId, new InfraFuture< T > ) );
+    infraPtr->refCount = 1;
+}
+
+template< typename T >
+Future< T >::Future( const Future& other ) :
+    futureId( other.futureId ), node( other.node ), infraPtr( other.infraPtr ) {
+    AASSERT4( infraPtr == node->findInfraFuture( futureId ) );
+    infraPtr->refCount++;
+}
+
+template< typename T >
+Future< T >& Future< T >::operator=( const Future& other ) {
+    futureId = other.futureId;
+    node = other.node;
+    infraPtr = other.infraPtr;
+    AASSERT4( infraPtr == node->findInfraFuture( futureId ) );
+    infraPtr->refCount++;
+    return *this;
+}
+
+template< typename T >
+Future< T >::Future( Future&& other ) :
+    futureId( other.futureId ), node( other.node ), infraPtr( other.infraPtr ) {
+    AASSERT4( infraPtr == node->findInfraFuture( futureId ) );
+    infraPtr->refCount++;
+}
+
+template< typename T >
+Future< T >::~Future() {
+    infraPtr->refCount--;
+}
+
+template< typename T >
+void Future< T >::then( const FutureFunction& fn ) {
+    AASSERT4( infraPtr == node->findInfraFuture( futureId ) );
+    infraPtr->fn = fn;
+}
+
+template< typename T >
+const T& Future< T >::value() const {
+    AASSERT4( infraPtr == node->findInfraFuture( futureId ) );
+    return infraPtr->getResult();
+}
 
 class Node {
     using FutureMap = std::unordered_map< FutureId, std::unique_ptr< InfraFutureBase > >;
@@ -91,8 +139,8 @@ class Node {
   public:
     FS* parentFS;
 
-    InfraFutureBase* insertInfraFuture( FutureId id ) {
-        auto p = futureMap.insert( FutureMap::value_type( id, std::unique_ptr< InfraFutureBase >( new InfraFuture ) ) );
+    InfraFutureBase* insertInfraFuture( FutureId id, InfraFutureBase* inf ) {
+        auto p = futureMap.insert( FutureMap::value_type( id, inf ) );
         AASSERT4( p.second, "Duplicated FutureId" );
         return p.first->second.get();
     }
@@ -107,10 +155,11 @@ class Node {
     void futureCleanup() {
         for( auto it = futureMap.begin(); it != futureMap.end(); ) {
             AASSERT4( it->second->refCount >= 0 );
-            if( it->second->refCount <= 0 )
+            if( it->second->refCount <= 0 ) {
                 it = futureMap.erase( it );
-            else
+            } else {
                 ++it;
+            }
         }
     }
 
@@ -189,20 +238,20 @@ class FS {
     }
 
     static void sampleAsyncEvent( Node* node, FutureId id );
-    static Future readFile( Node* node, const char* path );
+    static Future< Buffer > readFile( Node* node, const char* path );
 };
 
 class NodeOne : public Node {
   public:
     void run() override {
         std::string fname( "path1" );
-        Future data = FS::readFile( this, fname.c_str() );
+        Future< Buffer > data = FS::readFile( this, fname.c_str() );
         data.then( [ = ]() {
             infraConsole.log( "READ1: file {}---{}", fname.c_str(), data.value().toString() );
-            Future data2 = FS::readFile( this, "path2" );
+            Future< Buffer > data2 = FS::readFile( this, "path2" );
             data2.then( [ = ]() {
                 infraConsole.log( "READ2: {} : {}", data.value().toString(), data2.value().toString() );
-                Future data3 = FS::readFile( this, "path3" );
+                Future< Buffer > data3 = FS::readFile( this, "path3" );
                 data3.then( [ = ]() {
                     infraConsole.log( "READ3: {} : {}", data.value().toString(), data3.value().toString() );
                 } );
