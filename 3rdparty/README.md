@@ -17,5 +17,4 @@ License: 2-clause BSD
 
 URL: https://github.com/libuv/libuv
 
-License: MIT
-Some parts are licensed under 3-clause BSD, 2-clause BSD, and ISC (permissive BSD/MIT-style).
+License: MIT; some parts of libuv are licensed under 3-clause BSD, 2-clause BSD, and ISC (permissive BSD/MIT-style).
