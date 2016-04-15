@@ -1,3 +1,10 @@
+IMPORTANT: This License does NOT apply to third-party libraries within /3rdparty/ folder. For third-party libraries, see their respective licenses. 
+
+A brief summary of third-party licenses is provided in /3rdparty/README.md file. However, we do not make any representations about correctness of this file; the only authoritative source of the licensing information for third-party library is the library itself.
+
+============================================================================
+
+
                     GNU GENERAL PUBLIC LICENSE
                        Version 2, June 1991
 
@@ -337,3 +344,9 @@ proprietary programs.  If your program is a subroutine library, you may
 consider it more useful to permit linking proprietary applications with the
 library.  If this is what you want to do, use the GNU Lesser General
 Public License instead of this License.
+
+============================================================================
+
+IMPORTANT: This License does NOT apply to third-party libraries within /3rdparty/ folder. For third-party libraries, see their respective licenses. 
+
+A brief summary of third-party licenses is provided in /3rdparty/README.md file. However, we do not make any representations about correctness of this file; the only authoritative source of the licensing information for third-party library is the library itself.
