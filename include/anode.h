@@ -15,15 +15,17 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #ifndef ANODE_H
 #define ANODE_H
 
-#include <mutex>
-#include <condition_variable>
-#include <deque>
+//#include <mutex>
+//#include <condition_variable>
+//#include <deque>
 #include <set>
+#include <unordered_map>
 
 #include "abuffer.h"
 //#include "aconsole.h"
 #include "../libsrc/infra/infraconsole.h"
 #include "aassert.h"
+#include "../3rdparty/libuv/include/uv.h"
 
 namespace autom {
 
@@ -42,6 +44,7 @@ class InfraFutureBase {
   public:
     FutureFunction fn;
     int refCount;
+    const void* externId;
 
     virtual ~InfraFutureBase() {}
     virtual void setResult( const NetworkBuffer& b ) = 0;
@@ -86,7 +89,7 @@ class Future {
 template< typename T >
 Future< T >::Future( Node* node_ ) : node( node_ ) {
     futureId = node->nextFutureId();
-    infraPtr = static_cast< InfraFuture< T >* >( node->insertInfraFuture( futureId, new InfraFuture< T > ) );
+    infraPtr = static_cast<InfraFuture< T >*>( node->insertInfraFuture( futureId, new InfraFuture< T > ) );
     infraPtr->refCount = 1;
 }
 
@@ -116,6 +119,7 @@ Future< T >::Future( Future&& other ) :
 
 template< typename T >
 Future< T >::~Future() {
+    // TODO: check ( infraPtr == node->findInfraFuture( futureId ) )
     infraPtr->refCount--;
 }
 
@@ -183,44 +187,48 @@ class Node {
         }
     }
 };
-
+/*
 class FSQ {
-    std::deque< NodeQItem > q;
-    std::mutex mx;
-    std::condition_variable signal;
+	std::deque< NodeQItem > q;
+	std::mutex mx;
+	std::condition_variable signal;
 
   public:
-    void push( const NodeQItem& src ) {
-        std::lock_guard< std::mutex > lock( mx );
-        q.push_back( src );
-        signal.notify_one();
-    }
-    bool pop( NodeQItem& dst ) {
-        std::lock_guard< std::mutex > lock( mx );
-        if( q.size() ) {
-            dst = q.front();
-            q.pop_front();
-            return true;
-        }
-        return false;
-    }
-    void wait() {
-        std::unique_lock< std::mutex > lock( mx );
-        signal.wait( lock );
-    }
+	void push( const NodeQItem& src ) {
+		std::lock_guard< std::mutex > lock( mx );
+		q.push_back( src );
+		signal.notify_one();
+	}
+	bool pop( NodeQItem& dst ) {
+		std::lock_guard< std::mutex > lock( mx );
+		if( q.size() ) {
+			dst = q.front();
+			q.pop_front();
+			return true;
+		}
+		return false;
+	}
+	void wait() {
+		std::unique_lock< std::mutex > lock( mx );
+		signal.wait( lock );
+	}
 };
-
+*/
 class FS {
     std::set< Node* > nodes;
-    FSQ inputQueue;
+    uv_loop_t uvLoop;
 
     bool isEmpty() const;
 
   public:
-    void run();
-    void pushEvent( const NodeQItem& item ) {
-        inputQueue.push( item );
+    FS() {
+        uv_loop_init( &uvLoop );
     }
+    ~FS() {
+        uv_loop_close( &uvLoop );
+    }
+
+    void run();
     void addNode( Node* node ) {
         nodes.insert( node );
         node->parentFS = this;
@@ -237,8 +245,9 @@ class FS {
         }
     }
 
-    static void sampleAsyncEvent( Node* node, FutureId id );
     static Future< Buffer > readFile( Node* node, const char* path );
+    static bool listen( Node* node, int port );
+    static bool connect( Node* node, int port );
 };
 
 class NodeOne : public Node {
@@ -259,6 +268,17 @@ class NodeOne : public Node {
         } );
     }
 };
-}
 
+class NodeServer : public Node {
+  public:
+    void run() override {
+        if( FS::listen( this, 7000 ) ) {
+            INFRATRACE0( "listen 7000" );
+        } else if( FS::listen( this, 7001 ) ) {
+            INFRATRACE0( "listen 7001" );
+        }
+    }
+};
+
+}
 #endif
