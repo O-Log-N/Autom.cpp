@@ -58,13 +58,13 @@ static void timerFn( uv_timer_t* handle ) {
     AASSERT4( handle->data );
     const NodeQItem* item = static_cast<NodeQItem*>( handle->data );
     item->node->infraProcessEvent( *item );
-    delete item;
     handle->data = nullptr;
     uv_timer_stop( handle );
     uv_close( ( uv_handle_t* )handle, timerCloseCb );
+	delete item;
 }
 
-Future< Buffer > FS::readFile( Node* node, const char* path ) {
+Future< Buffer > FS::startTimer( Node* node, int sec ) {
     uv_timer_t* timer = new uv_timer_t;
     uv_timer_init( &node->parentFS->uvLoop, timer );
 
@@ -76,7 +76,7 @@ Future< Buffer > FS::readFile( Node* node, const char* path ) {
     item->node = node;
 
     timer->data = item;
-    uv_timer_start( timer, timerFn, 2000, 0 );
+    uv_timer_start( timer, timerFn, sec * 1000, 0 );
     return future;
 }
 

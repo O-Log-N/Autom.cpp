@@ -245,7 +245,7 @@ class FS {
         }
     }
 
-    static Future< Buffer > readFile( Node* node, const char* path );
+    static Future< Buffer > startTimer( Node* node, int sec );
     static bool listen( Node* node, int port );
     static bool connect( Node* node, int port );
 };
@@ -253,14 +253,13 @@ class FS {
 class NodeOne : public Node {
   public:
     void run() override {
-        std::string fname( "path1" );
-        Future< Buffer > data = FS::readFile( this, fname.c_str() );
+        Future< Buffer > data = FS::startTimer( this, 2 );
         data.then( [ = ]() {
-            infraConsole.log( "READ1: file {}---{}", fname.c_str(), data.value().toString() );
-            Future< Buffer > data2 = FS::readFile( this, "path2" );
+            infraConsole.log( "READ1: ---{}", data.value().toString() );
+            Future< Buffer > data2 = FS::startTimer( this, 5 );
             data2.then( [ = ]() {
                 infraConsole.log( "READ2: {} : {}", data.value().toString(), data2.value().toString() );
-                Future< Buffer > data3 = FS::readFile( this, "path3" );
+                Future< Buffer > data3 = FS::startTimer( this, 10 );
                 data3.then( [ = ]() {
                     infraConsole.log( "READ3: {} : {}", data.value().toString(), data3.value().toString() );
                 } );
@@ -272,11 +271,21 @@ class NodeOne : public Node {
 class NodeServer : public Node {
   public:
     void run() override {
+		int toConnect = 0;;
         if( FS::listen( this, 7000 ) ) {
             INFRATRACE0( "listen 7000" );
-        } else if( FS::listen( this, 7001 ) ) {
+			toConnect = 7001;
+		} else if( FS::listen( this, 7001 ) ) {
             INFRATRACE0( "listen 7001" );
-        }
+			toConnect = 7000;
+		}
+		if( toConnect ) {
+			Future< Buffer > data = FS::startTimer( this, 10 );
+			data.then( [=]() {
+				INFRATRACE0( "connecting {}", toConnect );
+				FS::connect( this, toConnect );
+			} );
+		}
     }
 };
 
