@@ -17,20 +17,21 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 
 using namespace autom;
 
-void Node::infraProcessEvent( const NodeQItem& item ) {
+void Node::infraProcessTimer( const NodeQTimer& item ) {
     auto it = futureMap.find( item.id );
     if( it != futureMap.end() ) {
         it->second->setResult( item.b );
         it->second->fn();
+        if( !item.repeat ) {
+            it->second->fn = FutureFunction();
+            //The line above effectively destroys existing lambda it->second.fn
+            //  First, we CAN do it, as we don't need second.fn anymore at all
+            //  Second, we SHOULD do it, to avoid cyclical references from lambda
+            //    to our InfraFutures, which will prevent futureCleanup() from
+            //    destroying InfraFuture - EVER
 
-        it->second->fn = FutureFunction();
-        //The line above effectively destroys existing lambda it->second.fn
-        //  First, we CAN do it, as we don't need second.fn anymore at all
-        //  Second, we SHOULD do it, to avoid cyclical references from lambda
-        //    to our InfraFutures, which will prevent futureCleanup() from
-        //    destroying InfraFuture - EVER
-
-        futureCleanup();
+            futureCleanup();
+        }
     }
 }
 
@@ -51,53 +52,56 @@ static void timerCloseCb( uv_handle_t* handle ) {
 }
 
 static void closeTcpCb( uv_handle_t* handle ) {
-	delete (uv_tcp_t*)handle;
+    delete ( uv_tcp_t* )handle;
 }
 
 static void timerFn( uv_timer_t* handle ) {
     AASSERT4( handle->data );
-    const NodeQItem* item = static_cast<NodeQItem*>( handle->data );
-    item->node->infraProcessEvent( *item );
-    handle->data = nullptr;
-    uv_timer_stop( handle );
-    uv_close( ( uv_handle_t* )handle, timerCloseCb );
-	delete item;
+    const NodeQTimer* item = static_cast<NodeQTimer*>( handle->data );
+    item->node->infraProcessTimer( *item );
+    if( !item->repeat ) {
+        handle->data = nullptr;
+        uv_close( ( uv_handle_t* )handle, timerCloseCb );
+        delete item;
+    }
 }
 
-Future< Buffer > FS::startTimer( Node* node, int sec ) {
-    uv_timer_t* timer = new uv_timer_t;
-    uv_timer_init( &node->parentFS->uvLoop, timer );
-
+Future< Buffer > FS::startTimer( Node* node, unsigned secDelay, unsigned secRepeat ) {
     Future< Buffer > future( node );
 
-    NodeQItem* item = new NodeQItem;
+    NodeQTimer* item = new NodeQTimer;
     item->id = future.getId();
-    item->b = NetworkBuffer( fmt::format( "Hello Future {}!", item->id ) );
+    item->b = NetworkBuffer( fmt::format( "Timer secRepeat{} : {} sec", secDelay, secRepeat ) );
     item->node = node;
+    item->repeat = ( secRepeat > 0 );
 
+    uv_timer_t* timer = new uv_timer_t;
+    uv_timer_init( &node->parentFS->uvLoop, timer );
     timer->data = item;
-    uv_timer_start( timer, timerFn, sec * 1000, 0 );
+    uv_timer_start( timer, timerFn, secDelay * 1000, secRepeat * 1000 );
+
     return future;
 }
 
-static void readAllocCb( uv_handle_t* handle, size_t size, uv_buf_t* buff ) {
+static void allocCb( uv_handle_t* handle, size_t size, uv_buf_t* buff ) {
     buff->len = size;
-    buff->base = new char[buff->len];
+    buff->base = new char[size];
 }
 
 static void readCb( uv_stream_t* stream, ssize_t nread, const uv_buf_t* buff ) {
     if( nread < 0 ) {
-        uv_read_stop( stream );
-        return;
+        uv_close( ( uv_handle_t* )stream, closeTcpCb );
+    } else {
+        INFRATRACE0( "{} bytes {}", nread, buff->base );
     }
-    INFRATRACE0( "{}", buff->base );
+    delete[] buff->base;
 }
 
 static void acceptCb( uv_stream_t* server, int status ) {
     uv_tcp_t* serverConn = new uv_tcp_t;
     uv_tcp_init( server->loop, serverConn );
     if( uv_accept( server, ( uv_stream_t * )serverConn ) == 0 ) {
-        uv_read_start( ( uv_stream_t * )serverConn, readAllocCb, readCb );
+        uv_read_start( ( uv_stream_t * )serverConn, allocCb, readCb );
     } else {
         uv_close( ( uv_handle_t * )serverConn, closeTcpCb );
     }
@@ -109,26 +113,27 @@ bool FS::listen( Node* node, int port ) {
     sockaddr_in addr;
     uv_ip4_addr( "127.0.0.1", port, &addr );
     if( UV_EADDRINUSE == uv_tcp_bind( server, ( sockaddr* )&addr, 0 ) )
-		goto busy;
-    if( uv_listen( ( uv_stream_t * )server, 1024, acceptCb ) )
         goto busy;
-	return true;
+    if( uv_listen( ( uv_stream_t* )server, 1024, acceptCb ) )
+        goto busy;
+    return true;
 
 busy:
-	uv_close( (uv_handle_t *)server, closeTcpCb );
-	return false;
+    uv_close( ( uv_handle_t* )server, closeTcpCb );
+    return false;
 }
 
-static void onWriteCompl( uv_write_t* wr, int status ) {
+static void writeCb( uv_write_t* wr, int status ) {
+    uv_close( ( uv_handle_t* )wr->handle, closeTcpCb );
     delete wr;
 }
 
 static void onConnected( uv_connect_t* req, int status ) {
-    const char toWirite[] = "bip bip";
-    uv_buf_t buf = uv_buf_init( const_cast<char*>(toWirite), strlen( toWirite ) + 1 );
+    static const char toWirite[] = "bip bip";
+    uv_buf_t buf = uv_buf_init( const_cast<char*>( toWirite ), strlen( toWirite ) + 1 );
     uv_write_t* wr = new uv_write_t;
-    uv_write( wr, req->handle, &buf, 1, onWriteCompl );
-	delete req;
+    uv_write( wr, req->handle, &buf, 1, writeCb );
+    delete req;
 }
 
 bool FS::connect( Node* node, int port ) {
@@ -136,7 +141,7 @@ bool FS::connect( Node* node, int port ) {
     uv_tcp_init( &node->parentFS->uvLoop, client );
     sockaddr_in addr;
     uv_ip4_addr( "127.0.0.1", port, &addr );
-    uv_connect_t* connect = new uv_connect_t;
-    uv_tcp_connect( connect, client, ( sockaddr* )&addr, onConnected );
+    uv_connect_t* req = new uv_connect_t;
+    uv_tcp_connect( req, client, ( sockaddr* )&addr, onConnected );
     return true;
 }

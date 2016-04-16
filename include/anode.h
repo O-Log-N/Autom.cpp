@@ -40,6 +40,10 @@ struct NodeQItem {
     NetworkBuffer b;
 };
 
+struct NodeQTimer : public NodeQItem {
+    bool repeat;
+};
+
 class InfraFutureBase {
   public:
     FutureFunction fn;
@@ -167,7 +171,7 @@ class Node {
         }
     }
 
-    void infraProcessEvent( const NodeQItem & item );
+    void infraProcessTimer( const NodeQTimer& item );
 
     FutureId nextFutureId() {
         return ++nextFutureIdCount;
@@ -187,33 +191,7 @@ class Node {
         }
     }
 };
-/*
-class FSQ {
-	std::deque< NodeQItem > q;
-	std::mutex mx;
-	std::condition_variable signal;
 
-  public:
-	void push( const NodeQItem& src ) {
-		std::lock_guard< std::mutex > lock( mx );
-		q.push_back( src );
-		signal.notify_one();
-	}
-	bool pop( NodeQItem& dst ) {
-		std::lock_guard< std::mutex > lock( mx );
-		if( q.size() ) {
-			dst = q.front();
-			q.pop_front();
-			return true;
-		}
-		return false;
-	}
-	void wait() {
-		std::unique_lock< std::mutex > lock( mx );
-		signal.wait( lock );
-	}
-};
-*/
 class FS {
     std::set< Node* > nodes;
     uv_loop_t uvLoop;
@@ -245,7 +223,7 @@ class FS {
         }
     }
 
-    static Future< Buffer > startTimer( Node* node, int sec );
+    static Future< Buffer > startTimer( Node* node, unsigned secDelay, unsigned secRepeat );
     static bool listen( Node* node, int port );
     static bool connect( Node* node, int port );
 };
@@ -253,13 +231,13 @@ class FS {
 class NodeOne : public Node {
   public:
     void run() override {
-        Future< Buffer > data = FS::startTimer( this, 2 );
+        Future< Buffer > data = FS::startTimer( this, 2, 0 );
         data.then( [ = ]() {
             infraConsole.log( "READ1: ---{}", data.value().toString() );
-            Future< Buffer > data2 = FS::startTimer( this, 5 );
+            Future< Buffer > data2 = FS::startTimer( this, 5, 0 );
             data2.then( [ = ]() {
                 infraConsole.log( "READ2: {} : {}", data.value().toString(), data2.value().toString() );
-                Future< Buffer > data3 = FS::startTimer( this, 10 );
+                Future< Buffer > data3 = FS::startTimer( this, 10, 0 );
                 data3.then( [ = ]() {
                     infraConsole.log( "READ3: {} : {}", data.value().toString(), data3.value().toString() );
                 } );
@@ -271,21 +249,21 @@ class NodeOne : public Node {
 class NodeServer : public Node {
   public:
     void run() override {
-		int toConnect = 0;;
+        int toConnect = 0;;
         if( FS::listen( this, 7000 ) ) {
             INFRATRACE0( "listen 7000" );
-			toConnect = 7001;
-		} else if( FS::listen( this, 7001 ) ) {
+            toConnect = 7001;
+        } else if( FS::listen( this, 7001 ) ) {
             INFRATRACE0( "listen 7001" );
-			toConnect = 7000;
-		}
-		if( toConnect ) {
-			Future< Buffer > data = FS::startTimer( this, 10 );
-			data.then( [=]() {
-				INFRATRACE0( "connecting {}", toConnect );
-				FS::connect( this, toConnect );
-			} );
-		}
+            toConnect = 7000;
+        }
+        if( toConnect ) {
+            Future< Buffer > data = FS::startTimer( this, 10, 5 );
+            data.then( [ = ]() {
+                INFRATRACE0( "connecting {}", toConnect );
+                FS::connect( this, toConnect );
+            } );
+        }
     }
 };
 
