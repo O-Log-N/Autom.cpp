@@ -15,9 +15,6 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #ifndef ANODE_H
 #define ANODE_H
 
-//#include <mutex>
-//#include <condition_variable>
-//#include <deque>
 #include <set>
 #include <unordered_map>
 
@@ -31,17 +28,28 @@ namespace autom {
 
 class Node;
 class FS;
+class TcpServerConn;
+class Timer {
+    void* handle;
+};
 using FutureFunction = std::function< void( void ) >;
 using FutureId = unsigned int;
 
 struct NodeQItem {
     FutureId id;
     Node* node;
+};
+
+struct NodeQBuffer : public NodeQItem {
     NetworkBuffer b;
 };
 
 struct NodeQTimer : public NodeQItem {
     bool repeat;
+};
+
+struct NodeQAccept : public NodeQItem {
+    uv_tcp_t* stream;
 };
 
 class InfraFutureBase {
@@ -51,7 +59,6 @@ class InfraFutureBase {
     const void* externId;
 
     virtual ~InfraFutureBase() {}
-    virtual void setResult( const NetworkBuffer& b ) = 0;
     virtual void debugDump() const = 0;
 };
 
@@ -63,11 +70,11 @@ class InfraFuture : public InfraFutureBase {
     const T& getResult() const {
         return result;
     }
-    void setResult( const NetworkBuffer& b ) override {
-        result.fromNetwork( b );
+    T& getResult() {
+        return result;
     }
     void debugDump() const {
-        INFRATRACE0( "    refcnt {} '{}'", refCount, result.toString() );
+        INFRATRACE0( "    refcnt {}", refCount );
     }
 };
 
@@ -79,6 +86,7 @@ class Future {
 
   public:
     explicit Future( Node* );
+    Future();
     Future( const Future& );
     Future( Future&& );
     Future& operator=( const Future& );
@@ -95,6 +103,13 @@ Future< T >::Future( Node* node_ ) : node( node_ ) {
     futureId = node->nextFutureId();
     infraPtr = static_cast<InfraFuture< T >*>( node->insertInfraFuture( futureId, new InfraFuture< T > ) );
     infraPtr->refCount = 1;
+}
+
+template<typename T>
+inline Future<T>::Future() {
+    futureId = 0;
+    node = nullptr;
+    infraPtr = nullptr;
 }
 
 template< typename T >
@@ -172,6 +187,8 @@ class Node {
     }
 
     void infraProcessTimer( const NodeQTimer& item );
+    void infraProcessTcpAccept( const NodeQAccept& item );
+    void infraProcessTcpRead( const NodeQBuffer& item );
 
     FutureId nextFutureId() {
         return ++nextFutureIdCount;
@@ -223,42 +240,63 @@ class FS {
         }
     }
 
-    static Future< Buffer > startTimer( Node* node, unsigned secDelay, unsigned secRepeat );
-    static bool listen( Node* node, int port );
+    static Future< Timer > startTimer( Node* node, unsigned secDelay, unsigned secRepeat );
+    static Future< TcpServerConn > listen( Node* node, int port );
     static bool connect( Node* node, int port );
 };
 
 class NodeOne : public Node {
   public:
     void run() override {
-        Future< Buffer > data = FS::startTimer( this, 2, 0 );
+        Future< Timer > data = FS::startTimer( this, 2, 0 );
         data.then( [ = ]() {
-            infraConsole.log( "READ1: ---{}", data.value().toString() );
-            Future< Buffer > data2 = FS::startTimer( this, 5, 0 );
+            infraConsole.log( "TIMER1" );
+            Future< Timer > data2 = FS::startTimer( this, 5, 0 );
             data2.then( [ = ]() {
-                infraConsole.log( "READ2: {} : {}", data.value().toString(), data2.value().toString() );
-                Future< Buffer > data3 = FS::startTimer( this, 10, 0 );
+                infraConsole.log( "TIMER2" );
+                Future< Timer > data3 = FS::startTimer( this, 10, 0 );
                 data3.then( [ = ]() {
-                    infraConsole.log( "READ3: {} : {}", data.value().toString(), data3.value().toString() );
+                    infraConsole.log( "TIMER3" );
                 } );
             } );
         } );
     }
 };
 
+class TcpServerConn {
+    friend class Node;
+    uv_stream_t* stream;
+
+  public:
+    Future< Buffer > read( Node* ) const;
+};
+
 class NodeServer : public Node {
   public:
     void run() override {
-        int toConnect = 0;;
-        if( FS::listen( this, 7000 ) ) {
+        int toConnect = 0;
+        Future< TcpServerConn > s = FS::listen( this, 7000 );
+        if( s.getId() ) {
             INFRATRACE0( "listen 7000" );
             toConnect = 7001;
-        } else if( FS::listen( this, 7001 ) ) {
-            INFRATRACE0( "listen 7001" );
-            toConnect = 7000;
+        } else {
+            s = FS::listen( this, 7001 );
+            if( s.getId() ) {
+                INFRATRACE0( "listen 7001" );
+                toConnect = 7000;
+            }
         }
+
         if( toConnect ) {
-            Future< Buffer > data = FS::startTimer( this, 10, 5 );
+            s.then( [ = ]() {
+                infraConsole.log( "Socket accepted" );
+                Future< Buffer > fromNet = s.value().read( this );
+                fromNet.then( [ = ]() {
+                    INFRATRACE0( "Received '{}'", fromNet.value().toString() );
+                } );
+            } );
+
+            Future< Timer > data = FS::startTimer( this, 10, 5 );
             data.then( [ = ]() {
                 INFRATRACE0( "connecting {}", toConnect );
                 FS::connect( this, toConnect );
