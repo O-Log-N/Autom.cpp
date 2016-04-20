@@ -43,18 +43,18 @@ static void test3_timer_fn( uv_timer_t* handle ) {
         uv_timer_stop( handle );
     INFRATRACE0( "N={}", handle->data );
 }
-
+/*
 static void test3() {
-    uv_loop_t* loop = uv_default_loop();
-    uv_timer_t timer;
-    uv_timer_init( loop, &timer );
-    timer.data = 0;
-    uv_timer_start( &timer, test3_timer_fn, 0, 1000 );
+	uv_loop_t* loop = uv_default_loop();
+	uv_timer_t timer;
+	uv_timer_init( loop, &timer );
+	timer.data = 0;
+	uv_timer_start( &timer, test3_timer_fn, 0, 1000 );
 
-    uv_run( loop, UV_RUN_DEFAULT );
-    uv_loop_close( loop );
+	uv_run( loop, UV_RUN_DEFAULT );
+	uv_loop_close( loop );
 }
-
+*/
 void testServer() {
     FS fs;
     Node* p = new NodeServer;
@@ -67,9 +67,9 @@ void testServer() {
 int main() {
     try {
         testServer();
-//      test3();
-//      test2();
-//		test1();
+        //      test3();
+        //      test2();
+        //		test1();
     } catch( const std::exception& e ) {
         console.error( "std::exception '{}'", e.what() );
         return 1;

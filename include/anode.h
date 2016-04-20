@@ -29,9 +29,7 @@ namespace autom {
 class Node;
 class FS;
 class TcpServerConn;
-class Timer {
-    void* handle;
-};
+class TcpClientConn;
 
 using FutureFunction = std::function< void( void ) >;
 using FutureId = unsigned int;
@@ -43,23 +41,40 @@ struct NodeQItem {
 
 struct NodeQBuffer : public NodeQItem {
     NetworkBuffer b;
-	FutureId closeId;
+    FutureId closeId;
 };
 
 struct NodeQTimer : public NodeQItem {
-    bool repeat;
 };
 
 struct NodeQAccept : public NodeQItem {
     uv_tcp_t* stream;
 };
 
+struct NodeQConnect : public NodeQItem {
+    uv_stream_t* stream;
+};
+
+
 class InfraFutureBase {
   public:
     FutureFunction fn;
     int refCount;
+    bool multi;
 
     virtual ~InfraFutureBase() {}
+    void cleanup() {
+        if( multi )
+            return;
+
+        fn = FutureFunction();
+        //The line above effectively destroys existing lambda it->second.fn
+        //  First, we CAN do it, as we don't need second.fn anymore at all
+        //  Second, we SHOULD do it, to avoid cyclical references from lambda
+        //    to our InfraFutures, which will prevent futureCleanup() from
+        //    destroying InfraFuture - EVER
+        refCount--;
+    }
     virtual void debugDump() const = 0;
 };
 
@@ -75,7 +90,7 @@ class InfraFuture : public InfraFutureBase {
         return result;
     }
     void debugDump() const {
-        INFRATRACE0( "    refcnt {}", refCount );
+        INFRATRACE0( "    refcnt {} {}", refCount, multi );
     }
 };
 
@@ -102,8 +117,10 @@ class Future {
 template< typename T >
 Future< T >::Future( Node* node_ ) : node( node_ ) {
     futureId = node->nextFutureId();
-    infraPtr = static_cast<InfraFuture< T >*>( node->insertInfraFuture( futureId, new InfraFuture< T > ) );
-    infraPtr->refCount = 1;
+    auto f = new InfraFuture< T >;
+    f->refCount = 1;
+    f->multi = false;
+    infraPtr = static_cast<InfraFuture< T >*>( node->insertInfraFuture( futureId, f ) );
 }
 
 template<typename T>
@@ -147,6 +164,7 @@ template< typename T >
 void Future< T >::then( const FutureFunction& fn ) {
     AASSERT4( infraPtr == node->findInfraFuture( futureId ) );
     infraPtr->fn = fn;
+    infraPtr->refCount++;
 }
 
 template< typename T >
@@ -157,48 +175,50 @@ const T& Future< T >::value() const {
 
 template< typename T >
 class MultiFuture {
-	FutureId futureId;
-	Node* node;
-	InfraFuture< T >* infraPtr;
+    FutureId futureId;
+    Node* node;
+    InfraFuture< T >* infraPtr;
 
-public:
-	explicit MultiFuture( Node* node );
-	MultiFuture();
-	MultiFuture( const MultiFuture& ) = default;
-	MultiFuture( MultiFuture&& ) = default;
-	MultiFuture& operator=( const MultiFuture& ) = default;
+  public:
+    explicit MultiFuture( Node* node );
+    MultiFuture();
+    MultiFuture( const MultiFuture& ) = default;
+    MultiFuture( MultiFuture&& ) = default;
+    MultiFuture& operator=( const MultiFuture& ) = default;
 
-	void onEach( const FutureFunction& f );
-	FutureId getId() const {
-		return futureId;
-	}
-	const T& value() const;
+    void onEach( const FutureFunction& f );
+    FutureId getId() const {
+        return futureId;
+    }
+    const T& value() const;
 };
 
 template< typename T >
 MultiFuture< T >::MultiFuture( Node* node_ ) : node( node_ ) {
-	futureId = node->nextFutureId();
-	infraPtr = static_cast<InfraFuture< T >*>( node->insertInfraFuture( futureId, new InfraFuture< T > ) );
-	infraPtr->refCount = 0;
+    futureId = node->nextFutureId();
+    auto f = new InfraFuture< T >;
+    f->refCount = 0;
+    f->multi = true;
+    infraPtr = static_cast<InfraFuture< T >*>( node->insertInfraFuture( futureId, f ) );
 }
 
 template<typename T>
 inline MultiFuture<T>::MultiFuture() {
-	futureId = 0;
-	node = nullptr;
-	infraPtr = nullptr;
+    futureId = 0;
+    node = nullptr;
+    infraPtr = nullptr;
 }
 
 template< typename T >
 void MultiFuture< T >::onEach( const FutureFunction& fn ) {
-	AASSERT4( infraPtr == node->findInfraFuture( futureId ) );
-	infraPtr->fn = fn;
+    AASSERT4( infraPtr == node->findInfraFuture( futureId ) );
+    infraPtr->fn = fn;
 }
 
 template< typename T >
 const T& MultiFuture< T >::value() const {
-	AASSERT4( infraPtr == node->findInfraFuture( futureId ) );
-	return infraPtr->getResult();
+    AASSERT4( infraPtr == node->findInfraFuture( futureId ) );
+    return infraPtr->getResult();
 }
 
 class Node {
@@ -209,52 +229,28 @@ class Node {
   public:
     FS* parentFS;
 
-    InfraFutureBase* insertInfraFuture( FutureId id, InfraFutureBase* inf ) {
-        auto p = futureMap.insert( FutureMap::value_type( id, inf ) );
-        AASSERT4( p.second, "Duplicated FutureId" );
-        return p.first->second.get();
-    }
-
-    InfraFutureBase* findInfraFuture( FutureId id ) {
-        auto it = futureMap.find( id );
-        if( it != futureMap.end() )
-            return it->second.get();
-        return nullptr;
-    }
-
-    void futureCleanup() {
-        for( auto it = futureMap.begin(); it != futureMap.end(); ) {
-            AASSERT4( it->second->refCount >= 0 );
-            if( it->second->refCount <= 0 ) {
-                it = futureMap.erase( it );
-            } else {
-                ++it;
-            }
-        }
-    }
-
-    void infraProcessTimer( const NodeQTimer& item );
-    void infraProcessTcpAccept( const NodeQAccept& item );
-    void infraProcessTcpRead( const NodeQBuffer& item );
-	void infraProcessTcpClosed( const NodeQBuffer& item );
-
     FutureId nextFutureId() {
         return ++nextFutureIdCount;
     }
 
+    InfraFutureBase* insertInfraFuture( FutureId id, InfraFutureBase* inf );
+    InfraFutureBase* findInfraFuture( FutureId id );
+    void futureCleanup();
+
+    void infraProcessTimer( const NodeQTimer& item );
+    void infraProcessTcpAccept( const NodeQAccept& item );
+    void infraProcessTcpRead( const NodeQBuffer& item );
+    void infraProcessTcpClosed( const NodeQBuffer& item );
+    void infraProcessTcpConnect( const NodeQConnect& item );
+
     virtual void run() = 0;
 
-    bool isEmpty() const {
-        return futureMap.size() == 0;
-    }
+    bool isEmpty() const;
+    void debugDump() const;
+};
 
-    void debugDump() const {
-        INFRATRACE0( "futures {}", futureMap.size() );
-        for( auto& it : futureMap ) {
-            INFRATRACE0( "  #{}", it.first );
-            it.second->debugDump();
-        }
-    }
+class Timer {
+    void* handle;
 };
 
 class FS {
@@ -288,10 +284,10 @@ class FS {
         }
     }
 
-	static Future< Timer > startTimer( Node* node, unsigned secDelay );
-	static MultiFuture< Timer > startTimer( Node* node, unsigned secDelay, unsigned secRepeat );
-	static MultiFuture< TcpServerConn > createServer( Node* node, int port );
-    static bool connect( Node* node, int port );
+    static Future< Timer > startTimer( Node* node, unsigned secDelay );
+    static MultiFuture< Timer > startTimer( Node* node, unsigned secDelay, unsigned secRepeat );
+    static MultiFuture< TcpServerConn > createServer( Node* node, int port );
+    static Future< TcpClientConn > connect( Node* node, int port );
 };
 
 class NodeOne : public Node {
@@ -314,11 +310,21 @@ class NodeOne : public Node {
 
 class TcpServerConn {
     friend class Node;
+    class Disconnected {};
     uv_stream_t* stream;
 
   public:
     Future< Buffer > read( Node* ) const;
-	Future< bool > end( Node* ) const;
+    Future< Disconnected > end( Node* ) const;
+};
+
+class TcpClientConn {
+    friend class Node;
+    class WriteCompleted {};
+    uv_stream_t* stream;
+
+  public:
+    Future< WriteCompleted > write( Node*, void* buff, size_t sz ) const;
 };
 
 class NodeServer : public Node {
@@ -344,16 +350,20 @@ class NodeServer : public Node {
                 fromNet.then( [ = ]() {
                     INFRATRACE0( "Received '{}'", fromNet.value().toString() );
                 } );
-				auto end = s.value().end( this );
-				end.then( [=]() {
-					INFRATRACE0( "Disconnected" );
-				} );
+                auto end = s.value().end( this );
+                end.then( [ = ]() {
+                    INFRATRACE0( "Disconnected" );
+                } );
             } );
 
             auto data = FS::startTimer( this, 10, 5 );
             data.onEach( [ = ]() {
                 INFRATRACE0( "connecting {}", toConnect );
-                FS::connect( this, toConnect );
+                auto c = FS::connect( this, toConnect );
+                c.then( [ = ]() {
+                    INFRATRACE0( "Writing..." );
+                    c.value().write( this, "bom bom", 8 );
+                } );
             } );
         }
     }
