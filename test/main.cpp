@@ -28,7 +28,7 @@ static void test1() {
 
 static void test2() {
     for( ;; ) {
-        FS fs;
+        InfraNodeContainer fs;
         Node* p = new NodeOne;
         fs.addNode( p );
         fs.run();
@@ -56,7 +56,7 @@ static void test3() {
 }
 */
 void testServer() {
-    FS fs;
+    InfraNodeContainer fs;
     Node* p = new NodeServer;
     fs.addNode( p );
     fs.run();

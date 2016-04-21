@@ -17,14 +17,7 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 
 using namespace autom;
 
-bool FS::isEmpty() const {
-    for( auto it : nodes )
-        if( !it->isEmpty() )
-            return false;
-    return true;
-}
-
-void FS::run() {
+void InfraNodeContainer::run() {
     uv_run( &uvLoop, UV_RUN_DEFAULT );
 }
 
@@ -47,33 +40,33 @@ static void timerCb( uv_timer_t* handle ) {
     }
 }
 
-Future< Timer > FS::startTimer( Node* node, unsigned secDelay ) {
+Future< Timer > net::startTimout( Node* node, unsigned secDelay ) {
     Future< Timer > future( node );
 
     NodeQTimer* item = new NodeQTimer;
-    item->id = future.getId();
+    item->id = future.infraGetId();
     item->node = node;
 
     uv_timer_t* timer = new uv_timer_t;
-    uv_timer_init( &node->parentFS->uvLoop, timer );
+    uv_timer_init( node->parentFS->infraLoop(), timer );
     timer->data = item;
     uv_timer_start( timer, timerCb, secDelay * 1000, 0 );
 
     return future;
 }
 
-MultiFuture< Timer > FS::startTimer( Node* node, unsigned secDelay, unsigned secRepeat ) {
+MultiFuture< Timer > net::setInterval( Node* node, unsigned secRepeat ) {
     AASSERT4( secRepeat > 0 );
     MultiFuture< Timer > future( node );
 
     NodeQTimer* item = new NodeQTimer;
-    item->id = future.getId();
+    item->id = future.infraGetId();
     item->node = node;
 
     uv_timer_t* timer = new uv_timer_t;
-    uv_timer_init( &node->parentFS->uvLoop, timer );
+    uv_timer_init( node->parentFS->infraLoop(), timer );
     timer->data = item;
-    uv_timer_start( timer, timerCb, secDelay * 1000, secRepeat * 1000 );
+    uv_timer_start( timer, timerCb, secRepeat * 1000, secRepeat * 1000 );
 
     return future;
 }
@@ -187,10 +180,10 @@ static void readCb( uv_stream_t* stream, ssize_t nread, const uv_buf_t* buff ) {
     delete[] buff->base;
 }
 
-Future< Buffer > TcpServerConn::read( Node* node ) const {
-    Future< Buffer > future( node );
+MultiFuture< Buffer > TcpServerConn::read( Node* node ) const {
+	MultiFuture< Buffer > future( node );
     NodeQBuffer* item = new NodeQBuffer;
-    item->id = future.getId();
+    item->id = future.infraGetId();
     item->node = node;
 
     stream->data = item;
@@ -201,7 +194,7 @@ Future< Buffer > TcpServerConn::read( Node* node ) const {
 Future< TcpServerConn::Disconnected > TcpServerConn::end( Node* node ) const {
     Future< TcpServerConn::Disconnected > future( node );
     AASSERT4( stream->data );
-    ( ( NodeQBuffer* )( stream->data ) )->closeId = future.getId();
+    ( ( NodeQBuffer* )( stream->data ) )->closeId = future.infraGetId();
     return future;
 }
 
@@ -218,28 +211,28 @@ static void acceptCb( uv_stream_t* server, int status ) {
     }
 }
 
-MultiFuture< TcpServerConn > FS::createServer( Node* node, int port ) {
-    MultiFuture< TcpServerConn > future( node );
+MultiFuture< TcpServerConn > TcpServer::listen( int port ) {
+    handle = new uv_tcp_t;
+    uv_tcp_init( node->parentFS->infraLoop(), handle );
 
-    uv_tcp_t* server = new uv_tcp_t;
-    uv_tcp_init( &node->parentFS->uvLoop, server );
     sockaddr_in addr;
     uv_ip4_addr( "127.0.0.1", port, &addr );
-    if( UV_EADDRINUSE == uv_tcp_bind( server, ( sockaddr* )&addr, 0 ) )
-        goto busy;
-
-    NodeQAccept* item = new NodeQAccept;
-    item->id = future.getId();
-    item->node = node;
-
-    if( uv_listen( ( uv_stream_t* )server, 1024, acceptCb ) )
-        goto busy;
-    server->data = item;
-    return future;
-
-busy:
-    uv_close( ( uv_handle_t* )server, tcpCloseCb );
+    if( 0 == uv_tcp_bind( handle, ( sockaddr* )&addr, 0 ) ) {
+        if( 0 == uv_listen( ( uv_stream_t* )handle, 1024, acceptCb ) ) {
+            MultiFuture< TcpServerConn > future( node );
+            NodeQAccept* item = new NodeQAccept;
+            item->id = future.infraGetId();
+            item->node = node;
+            handle->data = item;
+            return future;
+        }
+    }
+    uv_close( ( uv_handle_t* )handle, tcpCloseCb );
     return MultiFuture< TcpServerConn >();
+}
+
+TcpServer net::createServer( Node* node ) {
+    return TcpServer( node );
 }
 
 static void writeCb( uv_write_t* wr, int status ) {
@@ -265,16 +258,16 @@ static void tcpConnectedCb( uv_connect_t* req, int status ) {
     delete req;
 }
 
-Future< TcpClientConn > FS::connect( Node* node, int port ) {
+Future< TcpClientConn > net::connect( Node* node, int port ) {
     Future< TcpClientConn > future( node );
     uv_tcp_t* client = new uv_tcp_t;
-    uv_tcp_init( &node->parentFS->uvLoop, client );
+    uv_tcp_init( node->parentFS->infraLoop(), client );
     sockaddr_in addr;
     uv_ip4_addr( "127.0.0.1", port, &addr );
     uv_connect_t* req = new uv_connect_t;
 
     auto item = new NodeQConnect;
-    item->id = future.getId();
+    item->id = future.infraGetId();
     item->node = node;
     req->data = item;
 

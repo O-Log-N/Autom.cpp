@@ -27,7 +27,7 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 namespace autom {
 
 class Node;
-class FS;
+class InfraNodeContainer;
 class TcpServerConn;
 class TcpClientConn;
 
@@ -54,7 +54,6 @@ struct NodeQAccept : public NodeQItem {
 struct NodeQConnect : public NodeQItem {
     uv_stream_t* stream;
 };
-
 
 class InfraFutureBase {
   public:
@@ -108,7 +107,7 @@ class Future {
     Future& operator=( const Future& );
     ~Future();
     void then( const FutureFunction& );
-    FutureId getId() const {
+    FutureId infraGetId() const {
         return futureId;
     }
     const T& value() const;
@@ -187,8 +186,11 @@ class MultiFuture {
     MultiFuture& operator=( const MultiFuture& ) = default;
 
     void onEach( const FutureFunction& f );
-    FutureId getId() const {
+    FutureId infraGetId() const {
         return futureId;
+    }
+    bool isOk() const {
+        return !!futureId;
     }
     const T& value() const;
 };
@@ -227,7 +229,7 @@ class Node {
     FutureId nextFutureIdCount = 0;
 
   public:
-    FS* parentFS;
+    InfraNodeContainer* parentFS;
 
     FutureId nextFutureId() {
         return ++nextFutureIdCount;
@@ -253,18 +255,36 @@ class Timer {
     void* handle;
 };
 
-class FS {
+class TcpServer {
+    Node* node;
+    uv_tcp_t* handle;
+
+  public:
+    explicit TcpServer( Node* node_ ) : node( node_ ) {}
+    MultiFuture< TcpServerConn > listen( int port );
+};
+
+namespace net {
+Future< Timer > startTimout( Node* node, unsigned secDelay );
+MultiFuture< Timer > setInterval( Node* node, unsigned secRepeat );
+TcpServer createServer( Node* node );
+Future< TcpClientConn > connect( Node* node, int port );
+}
+
+class InfraNodeContainer {
     std::set< Node* > nodes;
     uv_loop_t uvLoop;
 
-    bool isEmpty() const;
-
   public:
-    FS() {
+    InfraNodeContainer() {
         uv_loop_init( &uvLoop );
     }
-    ~FS() {
+    ~InfraNodeContainer() {
         uv_loop_close( &uvLoop );
+    }
+
+    uv_loop_t* infraLoop() {
+        return &uvLoop;
     }
 
     void run();
@@ -283,23 +303,18 @@ class FS {
             it->debugDump();
         }
     }
-
-    static Future< Timer > startTimer( Node* node, unsigned secDelay );
-    static MultiFuture< Timer > startTimer( Node* node, unsigned secDelay, unsigned secRepeat );
-    static MultiFuture< TcpServerConn > createServer( Node* node, int port );
-    static Future< TcpClientConn > connect( Node* node, int port );
 };
 
 class NodeOne : public Node {
   public:
     void run() override {
-        auto data = FS::startTimer( this, 2 );
+        auto data = net::startTimout( this, 2 );
         data.then( [ = ]() {
             infraConsole.log( "TIMER1" );
-            auto data2 = FS::startTimer( this, 5 );
+            auto data2 = net::startTimout( this, 5 );
             data2.then( [ = ]() {
                 infraConsole.log( "TIMER2" );
-                auto data3 = FS::startTimer( this, 10 );
+                auto data3 = net::startTimout( this, 10 );
                 data3.then( [ = ]() {
                     infraConsole.log( "TIMER3" );
                 } );
@@ -314,7 +329,7 @@ class TcpServerConn {
     uv_stream_t* stream;
 
   public:
-    Future< Buffer > read( Node* ) const;
+    MultiFuture< Buffer > read( Node* ) const;
     Future< Disconnected > end( Node* ) const;
 };
 
@@ -330,42 +345,34 @@ class TcpClientConn {
 class NodeServer : public Node {
   public:
     void run() override {
-        int toConnect = 0;
-        auto s = FS::createServer( this, 7000 );
-        if( s.getId() ) {
-            INFRATRACE0( "listen 7000" );
-            toConnect = 7001;
-        } else {
-            s = FS::createServer( this, 7001 );
-            if( s.getId() ) {
-                INFRATRACE0( "listen 7001" );
-                toConnect = 7000;
-            }
+        int connectToPort = 7001;
+        auto server = net::createServer( this );
+        auto s = server.listen( 7000 );
+        if( !s.isOk() ) {
+            s = server.listen( 7001 );
+            connectToPort = 7000;
         }
-
-        if( toConnect ) {
-            s.onEach( [ = ]() {
-                infraConsole.log( "Connection accepted" );
-                auto fromNet = s.value().read( this );
-                fromNet.then( [ = ]() {
-                    INFRATRACE0( "Received '{}'", fromNet.value().toString() );
-                } );
-                auto end = s.value().end( this );
-                end.then( [ = ]() {
-                    INFRATRACE0( "Disconnected" );
-                } );
+        s.onEach( [ = ]() {
+            infraConsole.log( "Connection accepted" );
+            auto fromNet = s.value().read( this );
+            fromNet.onEach( [ = ]() {
+                INFRATRACE0( "Received '{}'", fromNet.value().toString() );
             } );
-
-            auto data = FS::startTimer( this, 10, 5 );
-            data.onEach( [ = ]() {
-                INFRATRACE0( "connecting {}", toConnect );
-                auto c = FS::connect( this, toConnect );
-                c.then( [ = ]() {
-                    INFRATRACE0( "Writing..." );
-                    c.value().write( this, "bom bom", 8 );
-                } );
+            auto end = s.value().end( this );
+            end.then( [ = ]() {
+                INFRATRACE0( "Disconnected" );
             } );
-        }
+        } );
+
+        auto data = net::setInterval( this, 5 );
+        data.onEach( [ = ]() {
+            INFRATRACE0( "connecting {}", connectToPort );
+            auto c = net::connect( this, connectToPort );
+            c.then( [ = ]() {
+                INFRATRACE0( "Writing..." );
+                c.value().write( this, "bom bom", 8 );
+            } );
+        } );
     }
 };
 
