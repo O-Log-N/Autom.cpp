@@ -12,32 +12,43 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 *******************************************************************************/
 
-#ifndef ABUFFER_H
-#define ABUFFER_H
+#ifndef NODECONTAINER_H
+#define NODECONTAINER_H
 
-#include <utility>
-#include <string>
+#include <set>
+
+#include "../../include/future.h"
+#include "../../3rdparty/libuv/include/uv.h"
 
 namespace autom {
 
-using NetworkBuffer = std::string;
+class Node;
 
-class Buffer {
-    std::string s;
+class InfraNodeContainer {
+	std::set< Node* > nodes;
+	uv_loop_t uvLoop;
 
-  public:
-    const char* toString() const {
-        return s.c_str();
-    }
+public:
+	InfraNodeContainer() {
+		uv_loop_init( &uvLoop );
+	}
+	~InfraNodeContainer() {
+		uv_loop_close( &uvLoop );
+	}
 
-    Buffer() {}
-    Buffer( const char* s_ ) : s( s_ ) {}
-    Buffer( const Buffer& other ) = default;
-    Buffer( Buffer&& ) = default;
-    Buffer& operator=( const Buffer& ) = default;
-    Buffer& operator=( Buffer&& ) = default;
+	uv_loop_t* infraLoop() {
+		return &uvLoop;
+	}
 
-	void fromNetwork( const NetworkBuffer& b );
+	void run() {
+		uv_run( &uvLoop, UV_RUN_DEFAULT );
+	}
+
+	void addNode( Node* node );
+	void removeNode( Node* node );
+	void debugDump( int line ) const;
 };
+
 }
+
 #endif

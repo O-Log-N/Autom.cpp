@@ -12,32 +12,25 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 *******************************************************************************/
 
-#ifndef ABUFFER_H
-#define ABUFFER_H
+#ifndef TIMER_H
+#define TIMER_H
 
-#include <utility>
-#include <string>
+#include "anode.h"
+#include "future.h"
 
 namespace autom {
 
-using NetworkBuffer = std::string;
-
-class Buffer {
-    std::string s;
-
-  public:
-    const char* toString() const {
-        return s.c_str();
-    }
-
-    Buffer() {}
-    Buffer( const char* s_ ) : s( s_ ) {}
-    Buffer( const Buffer& other ) = default;
-    Buffer( Buffer&& ) = default;
-    Buffer& operator=( const Buffer& ) = default;
-    Buffer& operator=( Buffer&& ) = default;
-
-	void fromNetwork( const NetworkBuffer& b );
+struct NodeQTimer : public NodeQItem {
 };
+
+class Timer {
+	void* handle;
+};
+
+Future< Timer > startTimout( Node* node, unsigned secDelay );
+MultiFuture< Timer > setInterval( Node* node, unsigned secRepeat );
+
 }
+
 #endif
+

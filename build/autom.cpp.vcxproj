@@ -162,6 +162,9 @@
     <ClCompile Include="..\3rdparty\cppformat\cppformat\format.cc" />
     <ClCompile Include="..\libsrc\aconsole.cpp" />
     <ClCompile Include="..\libsrc\anode.cpp" />
+    <ClCompile Include="..\libsrc\infra\nodecontainer.cpp" />
+    <ClCompile Include="..\libsrc\net.cpp" />
+    <ClCompile Include="..\libsrc\timer.cpp" />
     <ClCompile Include="..\test\main.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -170,7 +173,11 @@
     <ClInclude Include="..\include\abuffer.h" />
     <ClInclude Include="..\include\aconsole.h" />
     <ClInclude Include="..\include\anode.h" />
+    <ClInclude Include="..\include\future.h" />
+    <ClInclude Include="..\include\net.h" />
+    <ClInclude Include="..\include\timer.h" />
     <ClInclude Include="..\libsrc\infra\infraconsole.h" />
+    <ClInclude Include="..\libsrc\infra\nodecontainer.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -1,15 +1,15 @@
 /*******************************************************************************
 Copyright (C) 2016 OLogN Technologies AG
-	This program is free software; you can redistribute it and/or modify
-	it under the terms of the GNU General Public License version 2 as
-	published by the Free Software Foundation.
-	This program is distributed in the hope that it will be useful,
-	but WITHOUT ANY WARRANTY; without even the implied warranty of
-	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-	GNU General Public License for more details.
-	You should have received a copy of the GNU General Public License along
-	with this program; if not, write to the Free Software Foundation, Inc.,
-	51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License version 2 as
+published by the Free Software Foundation.
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+You should have received a copy of the GNU General Public License along
+with this program; if not, write to the Free Software Foundation, Inc.,
+51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 *******************************************************************************/
 
 #include "../include/aconsole.h"
@@ -72,7 +72,7 @@ void Console::timeEnd( const char* label ) {
 
     auto found = njTimes.find( label );
     if( found == njTimes.end() ) {
-        write( ERROR, "Console::timeEnd(): unknown label '{}'", label );
+        write( LEVEL_ERROR, "Console::timeEnd(): unknown label '{}'", label );
         return;
     }
 
@@ -91,7 +91,7 @@ static_assert( autom::Console::TRACE == 0, "Console::TRACE==0" );
 static_assert( autom::Console::INFO == 1, "Console::INFO==1" );
 static_assert( autom::Console::NOTICE == 2, "Console::NOTICE==2" );
 static_assert( autom::Console::WARN == 3, "Console::WARN==3" );
-static_assert( autom::Console::ERROR == 4, "Console::ERROR==4" );
+static_assert( autom::Console::LEVEL_ERROR == 4, "Console::ERROR==4" );
 static_assert( autom::Console::CRITICAL == 5, "Console::CRITICAL==5" );
 static_assert( autom::Console::ALERT == 6, "Console::ALERT==6" );
 
@@ -110,7 +110,7 @@ static const char* const defaultFmtStrings[] = {
 void DefaultConsole::formattedWrite( WRITELEVEL lvl, const char* s ) {
     //AASSERT() is probably way too harsh here
     if( lvl >= 0 && lvl < sizeof( defaultFmtStrings ) / sizeof( defaultFmtStrings[0] ) )
-        fmt::print( lvl >= ERROR ? std::cerr : std::cout, defaultFmtStrings[lvl], s );
+        fmt::print( lvl >= LEVEL_ERROR ? std::cerr : std::cout, defaultFmtStrings[lvl], s );
     else {
         fmt::print( std::cerr, "ERROR: DefaultConsole::formattedWrite(): unknown lvl={}, forced to ERROR:\n", lvl );
         fmt::print( std::cerr, "ERROR: {}\n", s );

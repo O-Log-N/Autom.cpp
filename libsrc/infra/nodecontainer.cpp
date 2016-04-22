@@ -12,32 +12,24 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 *******************************************************************************/
 
-#ifndef ABUFFER_H
-#define ABUFFER_H
+#include "nodecontainer.h"
+#include "../../include/anode.h"
 
-#include <utility>
-#include <string>
-
-namespace autom {
-
-using NetworkBuffer = std::string;
-
-class Buffer {
-    std::string s;
-
-  public:
-    const char* toString() const {
-        return s.c_str();
-    }
-
-    Buffer() {}
-    Buffer( const char* s_ ) : s( s_ ) {}
-    Buffer( const Buffer& other ) = default;
-    Buffer( Buffer&& ) = default;
-    Buffer& operator=( const Buffer& ) = default;
-    Buffer& operator=( Buffer&& ) = default;
-
-	void fromNetwork( const NetworkBuffer& b );
-};
+using namespace autom;
+void InfraNodeContainer::addNode( Node* node ) {
+	nodes.insert( node );
+	node->parentFS = this;
+	node->run();
 }
-#endif
+
+void InfraNodeContainer::removeNode( Node* node ) {
+	AASSERT4( node->isEmpty() );
+	nodes.erase( node );
+}
+
+void InfraNodeContainer::debugDump( int line ) const {
+	INFRATRACE0( "line {} Nodes: {} ----------", line, nodes.size() );
+	for( auto it : nodes ) {
+		it->debugDump();
+	}
+}

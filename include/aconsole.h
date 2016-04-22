@@ -1,15 +1,15 @@
 /*******************************************************************************
 Copyright (C) 2016 OLogN Technologies AG
-	This program is free software; you can redistribute it and/or modify
-	it under the terms of the GNU General Public License version 2 as
-	published by the Free Software Foundation.
-	This program is distributed in the hope that it will be useful,
-	but WITHOUT ANY WARRANTY; without even the implied warranty of
-	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-	GNU General Public License for more details.
-	You should have received a copy of the GNU General Public License along
-	with this program; if not, write to the Free Software Foundation, Inc.,
-	51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License version 2 as
+published by the Free Software Foundation.
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+You should have received a copy of the GNU General Public License along
+with this program; if not, write to the Free Software Foundation, Inc.,
+51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 *******************************************************************************/
 
 #ifndef ACONSOLE_H_INCLUDED
@@ -45,7 +45,7 @@ class Console {
 
   public:
     enum WRITELEVEL { //NOT using enum class here to enable shorter console.write(Console::INFO,...);
-        TRACE = 0, INFO = 1, NOTICE = 2, WARN = 3, ERROR = 4, CRITICAL = 5, ALERT = 6
+        TRACE = 0, INFO = 1, NOTICE = 2, WARN = 3, LEVEL_ERROR = 4, CRITICAL = 5, ALERT = 6
     };
 
     struct TimeLabel {
@@ -107,7 +107,7 @@ class Console {
 
     template< typename... ARGS >
     void error( const char* formatStr, const ARGS& ... args ) {
-        write( ERROR, formatStr, args... );
+        write( LEVEL_ERROR, formatStr, args... );
     }
     template< typename... ARGS >
     void info( const char* formatStr, const ARGS& ... args ) {
