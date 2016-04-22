@@ -110,6 +110,11 @@ Future< TcpClientConn::WriteCompleted > TcpClientConn::write( Node* node, void* 
     return future;
 }
 
+void TcpClientConn::close( Node* node ) const {
+	uv_close( (uv_handle_t*)stream, tcpCloseCb );
+}
+
+
 static void tcpConnectedCb( uv_connect_t* req, int status ) {
     auto item = static_cast<NodeQConnect*>( req->data );
     if( status >= 0 ) {

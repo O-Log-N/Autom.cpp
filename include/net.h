@@ -55,6 +55,7 @@ class TcpClientConn {
 
   public:
     Future< WriteCompleted > write( Node*, void* buff, size_t sz ) const;
+	void close( Node* ) const;
 };
 
 class TcpServer {
