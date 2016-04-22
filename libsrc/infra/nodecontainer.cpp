@@ -17,19 +17,19 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 
 using namespace autom;
 void InfraNodeContainer::addNode( Node* node ) {
-	nodes.insert( node );
-	node->parentFS = this;
-	node->run();
+    nodes.insert( node );
+    node->parentFS = this;
+    node->run();
 }
 
 void InfraNodeContainer::removeNode( Node* node ) {
-	AASSERT4( node->isEmpty() );
-	nodes.erase( node );
+    AASSERT4( node->isEmpty() );
+    nodes.erase( node );
 }
 
 void InfraNodeContainer::debugDump( int line ) const {
-	INFRATRACE0( "line {} Nodes: {} ----------", line, nodes.size() );
-	for( auto it : nodes ) {
-		it->debugDump();
-	}
+    INFRATRACE0( "line {} Nodes: {} ----------", line, nodes.size() );
+    for( auto it : nodes ) {
+        it->debugDump();
+    }
 }

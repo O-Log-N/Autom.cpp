@@ -30,21 +30,21 @@ static void test1() {
 }
 
 class NodeOne : public Node {
-public:
-	void run() override {
-		auto data = startTimout( this, 2 );
-		data.then( [=]() {
-			infraConsole.log( "TIMER1" );
-			auto data2 = startTimout( this, 5 );
-			data2.then( [=]() {
-				infraConsole.log( "TIMER2" );
-				auto data3 = startTimout( this, 10 );
-				data3.then( [=]() {
-					infraConsole.log( "TIMER3" );
-				} );
-			} );
-		} );
-	}
+  public:
+    void run() override {
+        auto data = startTimeout( this, 2 );
+        data.then( [ = ]() {
+            infraConsole.log( "TIMER1" );
+            auto data2 = startTimeout( this, 5 );
+            data2.then( [ = ]() {
+                infraConsole.log( "TIMER2" );
+                auto data3 = startTimeout( this, 10 );
+                data3.then( [ = ]() {
+                    infraConsole.log( "TIMER3" );
+                } );
+            } );
+        } );
+    }
 };
 
 static void test2() {
@@ -78,37 +78,74 @@ static void test3() {
 */
 
 class NodeServer : public Node {
-public:
-	void run() override {
-		int connectToPort = 7001;
-		auto server = net::createServer( this );
-		auto s = server.listen( 7000 );
-		if( !s.isOk() ) {
-			s = server.listen( 7001 );
-			connectToPort = 7000;
-		}
-		s.onEach( [=]() {
-			infraConsole.log( "Connection accepted" );
-			auto fromNet = s.value().read( this );
-			fromNet.onEach( [=]() {
-				INFRATRACE0( "Received '{}'", fromNet.value().toString() );
-			} );
-			auto end = s.value().end( this );
-			end.then( [=]() {
-				INFRATRACE0( "Disconnected" );
-			} );
-		} );
+  public:
+    void run() override {
+        int connectToPort = 7001;
+        auto server = net::createServer( this );
+        auto s = server.listen( 7000 );
+        if( !s.isOk() ) {
+            s = server.listen( 7001 );
+            connectToPort = 7000;
+        }
+        s.onEach( [ = ]() {
+            infraConsole.log( "Connection accepted" );
+            auto fromNet = s.value().read( this );
+            fromNet.onEach( [ = ]() {
+                INFRATRACE0( "Received '{}'", fromNet.value().toString() );
+            } );
+            auto end = s.value().end( this );
+            end.then( [ = ]() {
+                INFRATRACE0( "Disconnected" );
+            } );
+        } );
 
-		auto data = setInterval( this, 5 );
-		data.onEach( [=]() {
-			INFRATRACE0( "connecting {}", connectToPort );
-			auto c = net::connect( this, connectToPort );
-			c.then( [=]() {
-				INFRATRACE0( "Writing..." );
-				c.value().write( this, "bom bom", 8 );
-			} );
-		} );
-	}
+        auto data = setInterval( this, 5 );
+        data.onEach( [ = ]() {
+            INFRATRACE0( "connecting {}", connectToPort );
+            auto c = net::connect( this, connectToPort );
+            c.then( [ = ]() {
+                INFRATRACE0( "Writing..." );
+                c.value().write( this, "bom bom", 8 );
+            } );
+        } );
+    }
+};
+
+class NodeServer2 : public Node {
+  public:
+    void run() override {
+        int connectToPort = 7001;
+        auto server = net::createServer( this );
+        auto s = server.listen( 7000 );
+        if( !s.isOk() ) {
+            s = server.listen( 7001 );
+            connectToPort = 7000;
+        }
+        s.onEach( [ = ]() {
+            infraConsole.log( "Connection accepted" );
+            auto fromNet = s.value().read( this );
+            fromNet.onEach( [ = ]() {
+                INFRATRACE0( "Received '{}'", fromNet.value().toString() );
+            } );
+            auto end = s.value().end( this );
+            end.then( [ = ]() {
+                INFRATRACE0( "Disconnected" );
+            } );
+        } );
+
+        auto t = autom::startTimeout( this, 10 );
+        t.then( [ = ]() {
+            auto con = net::connect( this, connectToPort );
+            con.then( [ = ]() {
+                INFRATRACE0( "connected {}", connectToPort );
+                auto t2 = setInterval( this, 5 );
+                t2.onEach( [ = ]() {
+                    INFRATRACE0( "Writing..." );
+                    con.value().write( this, "bom bom", 8 );
+                } );
+            } );
+        } );
+    }
 };
 
 void testServer() {

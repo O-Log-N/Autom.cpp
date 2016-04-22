@@ -27,36 +27,36 @@ struct NodeQBuffer;
 struct NodeQConnect;
 
 struct NodeQItem {
-	FutureId id;
-	Node* node;
+    FutureId id;
+    Node* node;
 };
 
 class Node {
-	using FutureMap = std::unordered_map< FutureId, std::unique_ptr< InfraFutureBase > >;
-	FutureMap futureMap;
-	FutureId nextFutureIdCount = 0;
+    using FutureMap = std::unordered_map< FutureId, std::unique_ptr< InfraFutureBase > >;
+    FutureMap futureMap;
+    FutureId nextFutureIdCount = 0;
 
-public:
-	InfraNodeContainer* parentFS;
+  public:
+    InfraNodeContainer* parentFS;
 
-	FutureId nextFutureId() {
-		return ++nextFutureIdCount;
-	}
+    FutureId nextFutureId() {
+        return ++nextFutureIdCount;
+    }
 
-	InfraFutureBase* insertInfraFuture( FutureId id, InfraFutureBase* inf );
-	InfraFutureBase* findInfraFuture( FutureId id );
-	void futureCleanup();
+    InfraFutureBase* insertInfraFuture( FutureId id, InfraFutureBase* inf );
+    InfraFutureBase* findInfraFuture( FutureId id );
+    void futureCleanup();
 
-	void infraProcessTimer( const NodeQTimer& item );
-	void infraProcessTcpAccept( const NodeQAccept& item );
-	void infraProcessTcpRead( const NodeQBuffer& item );
-	void infraProcessTcpClosed( const NodeQBuffer& item );
-	void infraProcessTcpConnect( const NodeQConnect& item );
+    void infraProcessTimer( const NodeQTimer& item );
+    void infraProcessTcpAccept( const NodeQAccept& item );
+    void infraProcessTcpRead( const NodeQBuffer& item );
+    void infraProcessTcpClosed( const NodeQBuffer& item );
+    void infraProcessTcpConnect( const NodeQConnect& item );
 
-	virtual void run() = 0;
+    virtual void run() = 0;
 
-	bool isEmpty() const;
-	void debugDump() const;
+    bool isEmpty() const;
+    void debugDump() const;
 };
 
 }

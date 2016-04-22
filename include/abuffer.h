@@ -37,7 +37,7 @@ class Buffer {
     Buffer& operator=( const Buffer& ) = default;
     Buffer& operator=( Buffer&& ) = default;
 
-	void fromNetwork( const NetworkBuffer& b );
+    void fromNetwork( const NetworkBuffer& b );
 };
 }
 #endif

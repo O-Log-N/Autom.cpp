@@ -24,10 +24,10 @@ struct NodeQTimer : public NodeQItem {
 };
 
 class Timer {
-	void* handle;
+    void* handle;
 };
 
-Future< Timer > startTimout( Node* node, unsigned secDelay );
+Future< Timer > startTimeout( Node* node, unsigned secDelay );
 MultiFuture< Timer > setInterval( Node* node, unsigned secRepeat );
 
 }

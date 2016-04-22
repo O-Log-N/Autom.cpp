@@ -25,28 +25,28 @@ namespace autom {
 class Node;
 
 class InfraNodeContainer {
-	std::set< Node* > nodes;
-	uv_loop_t uvLoop;
+    std::set< Node* > nodes;
+    uv_loop_t uvLoop;
 
-public:
-	InfraNodeContainer() {
-		uv_loop_init( &uvLoop );
-	}
-	~InfraNodeContainer() {
-		uv_loop_close( &uvLoop );
-	}
+  public:
+    InfraNodeContainer() {
+        uv_loop_init( &uvLoop );
+    }
+    ~InfraNodeContainer() {
+        uv_loop_close( &uvLoop );
+    }
 
-	uv_loop_t* infraLoop() {
-		return &uvLoop;
-	}
+    uv_loop_t* infraLoop() {
+        return &uvLoop;
+    }
 
-	void run() {
-		uv_run( &uvLoop, UV_RUN_DEFAULT );
-	}
+    void run() {
+        uv_run( &uvLoop, UV_RUN_DEFAULT );
+    }
 
-	void addNode( Node* node );
-	void removeNode( Node* node );
-	void debugDump( int line ) const;
+    void addNode( Node* node );
+    void removeNode( Node* node );
+    void debugDump( int line ) const;
 };
 
 }
