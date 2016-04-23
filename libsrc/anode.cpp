@@ -72,7 +72,7 @@ void Node::infraProcessTcpConnect( const NodeQConnect& item ) {
 }
 
 InfraFutureBase* Node::insertInfraFuture( FutureId id, InfraFutureBase* inf ) {
-    auto p = futureMap.insert( FutureMap::value_type( id, inf ) );
+    auto p = futureMap.insert( FutureMap::value_type( id, std::unique_ptr<InfraFutureBase>( inf ) ) );
     AASSERT4( p.second, "Duplicated FutureId" );
     return p.first->second.get();
 }

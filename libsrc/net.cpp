@@ -102,7 +102,7 @@ static void writeCb( uv_write_t* wr, int status ) {
     delete wr;
 }
 
-Future< TcpClientConn::WriteCompleted > TcpClientConn::write( Node* node, void* buff, size_t sz ) const {
+Future< TcpClientConn::WriteCompleted > TcpClientConn::write( Node* node, const void* buff, size_t sz ) const {
     Future< WriteCompleted > future( node );
     uv_write_t* wr = new uv_write_t;
     uv_buf_t buf = uv_buf_init( ( char* )buff, sz );

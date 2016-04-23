@@ -42,7 +42,9 @@ class TcpServerConn {
 
   public:
     MultiFuture< Buffer > read( Node* ) const;
-    Future< Buffer > write( Node*, void* buff, size_t sz ) const {};
+    Future< Buffer > write( Node*, const void* buff, size_t sz ) const {
+        return Future< Buffer >();
+    };
     Future< Disconnected > end( Node* ) const;
 };
 
@@ -52,7 +54,7 @@ class TcpClientConn {
     uv_stream_t* stream;
 
   public:
-    Future< WriteCompleted > write( Node*, void* buff, size_t sz ) const;
+    Future< WriteCompleted > write( Node*, const void* buff, size_t sz ) const;
     void close( Node* ) const;
 };
 
