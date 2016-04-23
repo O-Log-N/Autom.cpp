@@ -20,15 +20,10 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #include <memory>
 
 #include "aassert.h"
-#include "..\libsrc\infra\infraconsole.h"
+#include "anode.h"
+#include "../libsrc/infra/infraconsole.h"
 
 namespace autom {
-
-class Node;
-class InfraNodeContainer;
-
-using FutureFunction = std::function< void( void ) >;
-using FutureId = unsigned int;
 
 class InfraFutureBase {
   public:

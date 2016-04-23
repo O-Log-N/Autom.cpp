@@ -17,9 +17,15 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 
 #include "../libsrc/infra/infraconsole.h"
 #include "aassert.h"
-#include "future.h"
 
 namespace autom {
+
+using FutureFunction = std::function< void( void ) >;
+using FutureId = unsigned int;
+
+class Node;
+class InfraFutureBase;
+class InfraNodeContainer;
 
 struct NodeQTimer;
 struct NodeQAccept;

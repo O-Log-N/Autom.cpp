@@ -106,7 +106,7 @@ class NodeServer : public Node {
             c.then( [ = ]() {
                 INFRATRACE0( "Writing..." );
                 c.value().write( this, "bom bom", 8 );
-				c.value().close( this );
+                c.value().close( this );
             } );
         } );
     }

@@ -22,8 +22,6 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 
 namespace autom {
 
-class Node;
-
 struct NodeQBuffer : public NodeQItem {
     NetworkBuffer b;
     FutureId closeId;
@@ -55,7 +53,7 @@ class TcpClientConn {
 
   public:
     Future< WriteCompleted > write( Node*, void* buff, size_t sz ) const;
-	void close( Node* ) const;
+    void close( Node* ) const;
 };
 
 class TcpServer {

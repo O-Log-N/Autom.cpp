@@ -12,9 +12,9 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 *******************************************************************************/
 
-#include "..\include\net.h"
-#include "..\include\anode.h"
-#include "infra\nodecontainer.h"
+#include "../include/net.h"
+#include "../include/anode.h"
+#include "infra/nodecontainer.h"
 
 
 using namespace autom;
@@ -111,9 +111,8 @@ Future< TcpClientConn::WriteCompleted > TcpClientConn::write( Node* node, void* 
 }
 
 void TcpClientConn::close( Node* node ) const {
-	uv_close( (uv_handle_t*)stream, tcpCloseCb );
+    uv_close( ( uv_handle_t* )stream, tcpCloseCb );
 }
-
 
 static void tcpConnectedCb( uv_connect_t* req, int status ) {
     auto item = static_cast<NodeQConnect*>( req->data );
