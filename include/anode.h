@@ -15,12 +15,13 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #ifndef ANODE_H
 #define ANODE_H
 
+#include <exception>
 #include "../libsrc/infra/infraconsole.h"
 #include "aassert.h"
 
 namespace autom {
 
-using FutureFunction = std::function< void( void ) >;
+using FutureFunction = std::function< void( const std::exception* ) >;
 using FutureId = unsigned int;
 
 class Node;

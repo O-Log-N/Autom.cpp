@@ -43,9 +43,10 @@ class TcpServerConn {
   public:
     MultiFuture< Buffer > read( Node* ) const;
     Future< Buffer > write( Node*, const void* buff, size_t sz ) const {
-        return Future< Buffer >();
+        return Future< Buffer >(); // TODO: implement
     };
-    Future< Disconnected > end( Node* ) const;
+    void disconnect( Node* ) const;
+    Future< Disconnected > closed( Node* ) const;
 };
 
 class TcpClientConn {

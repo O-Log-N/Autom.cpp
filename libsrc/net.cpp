@@ -58,7 +58,11 @@ MultiFuture< Buffer > TcpServerConn::read( Node* node ) const {
     return future;
 }
 
-Future< TcpServerConn::Disconnected > TcpServerConn::end( Node* node ) const {
+void TcpServerConn::disconnect( Node* node ) const {
+    uv_close( ( uv_handle_t * )stream, tcpCloseCb );
+}
+
+Future< TcpServerConn::Disconnected > TcpServerConn::closed( Node* node ) const {
     Future< TcpServerConn::Disconnected > future( node );
     AASSERT4( stream->data );
     ( static_cast< NodeQBuffer* >( stream->data ) )->closeId = future.infraGetId();
@@ -143,6 +147,12 @@ Future< TcpClientConn > net::connect( Node* node, int port ) {
     return future;
 }
 
-void Buffer::fromNetwork( const NetworkBuffer& b ) {
+std::exception* Buffer::fromNetwork( const NetworkBuffer& b ) {
     s = b;
+	static int cnt = 0;
+	if( ++cnt % 3 == 0 ) {
+		auto ex = new std::exception( "Ill formed reply" );
+		return ex;
+	}
+    return nullptr;
 }

@@ -33,13 +33,13 @@ class NodeOne : public Node {
   public:
     void run() override {
         auto data = startTimeout( this, 2 );
-        data.then( [ = ]() {
+        data.then( [ = ]( const std::exception * ex ) {
             infraConsole.log( "TIMER1" );
             auto data2 = startTimeout( this, 5 );
-            data2.then( [ = ]() {
+            data2.then( [ = ]( const std::exception * ex ) {
                 infraConsole.log( "TIMER2" );
                 auto data3 = startTimeout( this, 10 );
-                data3.then( [ = ]() {
+                data3.then( [ = ]( const std::exception * ex ) {
                     infraConsole.log( "TIMER3" );
                 } );
             } );
@@ -60,7 +60,7 @@ static void test2() {
 
 static void test3_timer_fn( uv_timer_t* handle ) {
     ( *( size_t* ) & ( handle->data ) )++;
-    if( ( int )( handle->data ) > 10 )
+    if( ( size_t )( handle->data ) > 10 )
         uv_timer_stop( handle );
     INFRATRACE0( "N={}", handle->data );
 }
@@ -87,23 +87,32 @@ class NodeServer : public Node {
             s = server.listen( 7001 );
             connectToPort = 7000;
         }
-        s.onEach( [ = ]() {
+        s.onEach( [ = ]( const std::exception * ex ) {
+            if( ex ) {
+                infraConsole.log( "Accept error '{}'", ex->what() );
+                return;
+            }
             infraConsole.log( "Connection accepted" );
             auto fromNet = s.value().read( this );
-            fromNet.onEach( [ = ]() {
+            fromNet.onEach( [ = ]( const std::exception * ex ) {
+                if( ex ) {
+                    s.value().disconnect( this );
+                    infraConsole.log( "Read error '{}'", ex->what() );
+                    return;
+                }
                 INFRATRACE0( "Received '{}'", fromNet.value().toString() );
             } );
-            auto end = s.value().end( this );
-            end.then( [ = ]() {
+            auto end = s.value().closed( this );
+            end.then( [ = ]( const std::exception * ex ) {
                 INFRATRACE0( "Disconnected" );
             } );
         } );
 
         auto data = setInterval( this, 5 );
-        data.onEach( [ = ]() {
+        data.onEach( [ = ]( const std::exception * ex ) {
             INFRATRACE0( "connecting {}", connectToPort );
             auto c = net::connect( this, connectToPort );
-            c.then( [ = ]() {
+            c.then( [ = ]( const std::exception * ex ) {
                 INFRATRACE0( "Writing..." );
                 c.value().write( this, "bom bom", 8 );
                 c.value().close( this );
@@ -122,25 +131,25 @@ class NodeServer2 : public Node {
             s = server.listen( 7001 );
             connectToPort = 7000;
         }
-        s.onEach( [ = ]() {
+        s.onEach( [ = ]( const std::exception * ex ) {
             infraConsole.log( "Connection accepted" );
             auto fromNet = s.value().read( this );
-            fromNet.onEach( [ = ]() {
+            fromNet.onEach( [ = ]( const std::exception * ex ) {
                 INFRATRACE0( "Received '{}'", fromNet.value().toString() );
             } );
-            auto end = s.value().end( this );
-            end.then( [ = ]() {
+            auto end = s.value().closed( this );
+            end.then( [ = ]( const std::exception * ex ) {
                 INFRATRACE0( "Disconnected" );
             } );
         } );
 
         auto t = autom::startTimeout( this, 10 );
-        t.then( [ = ]() {
+        t.then( [ = ]( const std::exception * ex ) {
             auto con = net::connect( this, connectToPort );
-            con.then( [ = ]() {
+            con.then( [ = ]( const std::exception * ex ) {
                 INFRATRACE0( "connected {}", connectToPort );
                 auto t2 = setInterval( this, 5 );
-                t2.onEach( [ = ]() {
+                t2.onEach( [ = ]( const std::exception * ex ) {
                     INFRATRACE0( "Writing..." );
                     con.value().write( this, "bom bom", 8 );
                 } );

@@ -23,7 +23,7 @@ using namespace autom;
 void Node::infraProcessTimer( const NodeQTimer& item ) {
     auto it = futureMap.find( item.id );
     if( it != futureMap.end() ) {
-        it->second->fn();
+        it->second->fn( nullptr );
         it->second->cleanup();
         futureCleanup();
     }
@@ -34,7 +34,7 @@ void Node::infraProcessTcpAccept( const NodeQAccept& item ) {
     if( it != futureMap.end() ) {
         auto f = static_cast<InfraFuture< TcpServerConn >*>( it->second.get() );
         f->getResult().stream = ( uv_stream_t * )item.stream;
-        it->second->fn();
+        it->second->fn( nullptr );
         it->second->cleanup();
         futureCleanup();
     }
@@ -44,8 +44,9 @@ void Node::infraProcessTcpRead( const NodeQBuffer& item ) {
     auto it = futureMap.find( item.id );
     if( it != futureMap.end() ) {
         auto f = static_cast<InfraFuture< Buffer >*>( it->second.get() );
-        f->getResult().fromNetwork( item.b );
-        it->second->fn();
+        std::exception* ex = f->getResult().fromNetwork( item.b );
+        it->second->fn( ex );
+        delete ex;
         it->second->cleanup();
         futureCleanup();
     }
@@ -54,7 +55,7 @@ void Node::infraProcessTcpRead( const NodeQBuffer& item ) {
 void Node::infraProcessTcpClosed( const NodeQBuffer& item ) {
     auto it = futureMap.find( item.closeId );
     if( it != futureMap.end() ) {
-        it->second->fn();
+        it->second->fn( nullptr );
         it->second->cleanup();
         futureCleanup();
     }
@@ -65,7 +66,7 @@ void Node::infraProcessTcpConnect( const NodeQConnect& item ) {
     if( it != futureMap.end() ) {
         auto f = static_cast<InfraFuture< TcpClientConn >*>( it->second.get() );
         f->getResult().stream = item.stream;
-        it->second->fn();
+        it->second->fn( nullptr );
         it->second->cleanup();
         futureCleanup();
     }
