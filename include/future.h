@@ -148,7 +148,7 @@ class MultiFuture {
     InfraFuture< T >* infraPtr;
 
   public:
-    explicit MultiFuture( Node* node );
+    explicit MultiFuture( Node* );
     MultiFuture();
     MultiFuture( const MultiFuture& ) = default;
     MultiFuture( MultiFuture&& ) = default;

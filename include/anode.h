@@ -16,6 +16,8 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #define ANODE_H
 
 #include <exception>
+#include <unordered_map>
+
 #include "../libsrc/infra/infraconsole.h"
 #include "aassert.h"
 
