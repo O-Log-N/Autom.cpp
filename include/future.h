@@ -75,10 +75,15 @@ class Future {
     Future( Future&& );
     Future& operator=( const Future& );
     ~Future();
-    void then( const FutureFunction& );
+    void then( const FutureFunction& ) const;
     FutureId infraGetId() const {
         return futureId;
     }
+    void infraAssign( const Future& other ) const {
+        AASSERT4( 0 == futureId );
+        AASSERT4( node == other.node );
+        *infraPtr = *other.infraPtr;
+    };
     const T& value() const;
 };
 
@@ -129,7 +134,7 @@ Future< T >::~Future() {
 }
 
 template< typename T >
-void Future< T >::then( const FutureFunction& fn ) {
+void Future< T >::then( const FutureFunction& fn ) const {
     AASSERT4( infraPtr == node->findInfraFuture( futureId ) );
     infraPtr->fn = fn;
     infraPtr->refCount++;
