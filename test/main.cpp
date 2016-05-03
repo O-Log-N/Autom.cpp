@@ -160,151 +160,98 @@ class NodeServer2 : public Node {
 
 
 class CStep {
+    static void waitImpl( unsigned int id ) {
+        ATRACE0( "Waiting {} ...", id );
+    }
+
   public:
-    enum { NONE = 0, WAIT, JOIN, EXEC, COND };
-    unsigned int opCode;
-    unsigned int id;
-    std::function< void( const std::exception* ) > fn;
-    CStep* next1;
-    CStep* next2;
-
-    CStep() {
-        opCode = NONE;
-        next1 = next2 = nullptr;
-    }
-    explicit CStep( std::function< void( const std::exception* ) > fn_ ) {
-        opCode = EXEC;
-        id = NONE;
-        fn = fn_;
-        next1 = next2 = nullptr;
-    }
-    CStep( CStep&& other ) : opCode( other.opCode ), id( other.id ) {
-        std::swap( fn, other.fn );
-        next1 = other.next1;
-        next2 = other.next2;
-        other.next1 = other.next2 = nullptr;
-    }
-    CStep( const CStep& other ) : opCode( other.opCode ), id( other.id ), fn( other.fn ) {
-        next1 = next2 = nullptr;
-        if( other.next1 )
-            next1 = new CStep( *other.next1 );
-        if( other.next2 )
-            next2 = new CStep( *other.next2 );
-    }
-    ~CStep() {
-        delete next1;
-        delete next2;
-        next1 = next2 = nullptr;
+    static void thenImpl( unsigned int id ) {
+        ATRACE0( "Event {} ...", id );
     }
 
-    CStep* ccatch( std::function< void( const std::exception& ) > fn ) {
-        return this;
-    }
+    std::function< void( void ) > fn;
+
+    explicit CStep( std::function< void( void ) > fn_ )
+        : fn( fn_ ) {}
+    CStep( unsigned int futureId_ )
+        : fn( [ = ]() {
+        waitImpl( futureId_ );
+    } ) {}
+    CStep( CStep&& other ) = default;
+    CStep( const CStep& other ) = default;
+    CStep& operator=( const CStep& other ) = default;
+
+//	vector< CStep >* ccatch( std::function< void( const std::exception* ) > fn ) {
+//        return this;
+//    }
 };
 
 class CCode {
-	static CStep* linear( CStep* s ) {
-		if( !s )
-			return nullptr;
-		CStep* res = s;
-		CStep* cur = s;
-		if( CStep::NONE == s->opCode ) {
-			AASSERT4( 0 );
-		} else if( CStep::JOIN == s->opCode ) {
-			linear( cur->next1 );
-			linear( cur->next2 );
-		} else if( CStep::WAIT == s->opCode ) {
-			s->fn( nullptr );
-		} else if( CStep::EXEC == s->opCode ) {
-			s->fn( nullptr );
-		} else if( CStep::COND == s->opCode ) {
-			if( true ) // TODO: implement
-				exec( s->next1 );
-			else
-				exec( s->next2 );
-		}
-
-		return res;
-	}
-    static void exec( const CStep* s ) {
-		if( !s )
-			return;
-        if( CStep::NONE == s->opCode ) {
-            AASSERT4( 0 );
-        } else if( CStep::JOIN == s->opCode ) {
-            exec( s->next1 );
-            exec( s->next2 );
-        } else if( CStep::WAIT == s->opCode ) {
-            s->fn( nullptr );
-        } else if( CStep::EXEC == s->opCode ) {
-            s->fn( nullptr );
-        } else if( CStep::COND == s->opCode ) {
-            if( true ) // TODO: implement
-                exec( s->next1 );
-            else
-                exec( s->next2 );
+    using ExecChain = vector< CStep >;
+    static void exec( ExecChain* s ) {
+        AASSERT4( s );
+        while( s->size() ) {
+            auto i = s->begin();
+            i->fn();
+            s->erase( i );
         }
     }
 
   public:
-    CCode( Node*, const CStep* s ) {
+    CCode( Node*, ExecChain* s ) {
         exec( s );
     }
-    static CStep ttry( CStep* s ) {
-        return *s;
+    static ExecChain* ttry( ExecChain* s ) {
+        return s;
     }
-    static CStep* waitFor( const Future<Buffer>& future, std::function< void( const std::exception* ) > fn ) {
-        CStep* cmd = new CStep;
-        cmd->opCode = CStep::WAIT;
-        cmd->id = future.infraGetId();
-        cmd->fn = fn;
-        return cmd;
+    static vector< CStep >* waitFor( const Future<Buffer>& future, std::function< void( void ) > fn ) {
+        future.then( [ = ]( const std::exception * ex ) {
+            CStep::thenImpl( future.infraGetId() );
+        } );
+        auto s = new ExecChain;
+        s->push_back( CStep( future.infraGetId() ) );
+        s->push_back( CStep( fn ) );
+        return s;
     }
-    static CStep* join( CStep* s1, CStep* s2 ) {
-        CStep* cmd = new CStep;
-        cmd->opCode = CStep::JOIN;
-        cmd->id = 0;
-        cmd->next1 = s1;
-        cmd->next2 = s2;
-        return cmd;
+    static ExecChain* group( ExecChain* s1, ExecChain* s2 ) {
+        s1->insert( s1->end(), s2->begin(), s2->end() );
+        delete s2;
+        return s1;
     }
-    static CStep* join( std::function< void( const std::exception* ) > fn, CStep* s2 ) {
-        CStep* cmd = new CStep;
-        cmd->opCode = CStep::JOIN;
-        cmd->id = 0;
-        cmd->next1 = new CStep( fn );
-        cmd->next2 = s2;
-        return cmd;
+    static ExecChain* group( std::function< void( void ) > fn, ExecChain* s2 ) {
+        s2->insert( s2->begin(), CStep( fn ) );
+        return s2;
     }
-    static CStep* iif( const Future<bool>&, std::function< void( const std::exception* ) >, std::function< void( const std::exception* ) > );
+//   static CStep* iif( const Future<bool>&, std::function< void( void ) >, std::function< void( void ) > );
 };
 
 static void readFile( const autom::Future< autom::Buffer >& future, const char* s ) {
     *const_cast<Buffer*>( &future.value() ) = s;
 }
 
-class NodeServer3 : public Node	{
+class NodeServer3 : public Node {
   public:
     void run() override {
         std::string fname( "path1" );
         Future<Buffer> data( this ), data2( this ), data3( this );
-        CCode code( this, CCode::ttry( CCode::join( [ = ]( const std::exception* ) {
+        CCode code( this, CCode::ttry( CCode::group( [ = ]() {
             readFile( data, fname.c_str() );
         },
-        CCode::join( CCode::waitFor( data, [ = ]( const std::exception* ) {
+        CCode::group( CCode::waitFor( data, [ = ]() {
             infraConsole.log( "READ1: file {}---{}", fname.c_str(), data.value().toString() );
             readFile( data2, "path2" );
         } ),
-        CCode::join( CCode::waitFor( data2, [ = ]( const std::exception* ) {
+        CCode::group( CCode::waitFor( data2, [ = ]() {
             infraConsole.log( "READ2: {} : {}", data.value().toString(), data2.value().toString() );
             readFile( data3, "path3" );
         } ),
-        CCode::waitFor( data3, [ = ]( const std::exception* ) {
+        CCode::waitFor( data3, [ = ]() {
             infraConsole.log( "READ3: {} : {}", data2.value().toString(), data3.value().toString() );
         } ) ) ) )
-        ).ccatch( [ = ]( const std::exception & x ) {
-            infraConsole.log( "oopsies: {}", x.what() );
-        } ) );//ccatch+code
+                                     )//.ccatch( [ = ]( const std::exception * x ) {
+//            infraConsole.log( "oopsies: {}", x->what() );
+//      } )
+                  );//ccatch+code
     }
 };
 
