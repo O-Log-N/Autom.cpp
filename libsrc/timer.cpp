@@ -32,6 +32,18 @@ static void timerCb( uv_timer_t* handle ) {
         delete item;
     }
 }
+// TMP:
+void autom::startTimeout( const Future< Timer >& future, const Node* node, unsigned secDelay ) {
+    NodeQTimer* item = new NodeQTimer;
+    item->id = future.infraGetId();
+    item->node = const_cast<Node*>( node ); // TODO:
+
+    uv_timer_t* timer = new uv_timer_t;
+    uv_timer_init( node->parentFS->infraLoop(), timer );
+    timer->data = item;
+    uv_timer_start( timer, timerCb, secDelay * 1000, 0 );
+}
+
 
 autom::Future< Timer > autom::startTimeout( Node* node, unsigned secDelay ) {
     Future< Timer > future( node );
