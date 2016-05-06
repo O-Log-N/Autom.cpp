@@ -169,57 +169,53 @@ class CStep {
 
     CStep() {
         opCode = NONE;
+		id = 0;
         next = nullptr;
     }
     explicit CStep( std::function< void( const std::exception* ) > fn_ ) {
         opCode = EXEC;
-        id = NONE;
+        id = 0;
         fn = fn_;
         next = nullptr;
     }
-    CStep( CStep&& other ) : opCode( other.opCode ), id( other.id ), next( other.next ) {
-        std::swap( fn, other.fn );
-        std::swap( next, other.next );
-    }
+	CStep( CStep&& other );
     CStep( const CStep& other ) = default;
-    ~CStep() {}
+	~CStep() = default;
 
     CStep* ccatch( std::function< void( const std::exception& ) > fn ) {
         return this;
     }
-
-    static void afterEvent( const CStep* s );
 };
 
 class CCode {
   public:
     static void exec( const CStep* s ) {
-        if( !s )
-            return;
-        if( CStep::WAIT == s->opCode ) {
-            ATRACE0( "Waiting {}", s->id );
-            return;
-        } else if( CStep::EXEC == s->opCode ) {
-            s->fn( nullptr );
-        } else if( CStep::COND == s->opCode ) {
-            s->fn( nullptr );
-        } else {
-            AASSERT4( 0 );
+        while( s ) {
+           if( CStep::WAIT == s->opCode ) {
+                ATRACE0( "Waiting {} ...", s->id );
+                return;
+            } else {
+                AASSERT4( ( CStep::EXEC == s->opCode ) || ( CStep::COND == s->opCode ) );
+                s->fn( nullptr );
+            }
+
+			auto tmp = s;
+			s = s->next;
+			delete tmp;
         }
-        exec( s->next );
     }
     static void debugPrint( const CStep* s ) {
         if( !s )
             return;
-        ATRACE0( "OpCode {} id {}", s->opCode, s->id );
+        ATRACE0( "{} OpCode {} id {}", (void*)s, s->opCode, s->id );
         debugPrint( s->next );
     }
     CCode( Node*, const CStep* s ) {
         debugPrint( s );
         exec( s );
     }
-    static CStep ttry( CStep* s ) {
-        return *s;
+    static CStep* ttry( CStep* s ) {
+        return s;
     }
     static CStep* waitFor( const Future<Timer>& future, std::function< void( const std::exception* ) > fn ) {
         CStep* s = new CStep;
@@ -227,40 +223,46 @@ class CCode {
         s->id = future.infraGetId();
         future.then( [ = ]( const std::exception * ex ) {
             fn( ex );
-            CStep::afterEvent( s );
+            exec( s->next );
         } );
         return s;
     }
+    static CStep* iif( const Future<bool>& b, CStep* s1, CStep* s2 ) {
+        AASSERT4( s1 );
+        AASSERT4( s2 );
+        CStep* s = new CStep;
+        s->opCode = CStep::COND;
+        s->id = 0;
+        s->fn = [ = ]( const std::exception * ex ) {
+            // insert active branch into exec list
+            auto p = ( b.value() ? s1  : s2 );
+            auto tmp = s->next;
+            s->next = p;
+            while( p->next )
+                p = p->next;
+            p->next = tmp;
+            // delete passive branch
+            p = ( b.value() ? s2 : s1 );
+            while( p ) {
+                tmp = p;
+                p = p->next;
+                delete tmp;
+            }
+        };
+        return s;
+    }
     static CStep* group( CStep* s1, CStep* s2 ) {
-        AASSERT4( ! s1->next );
+        AASSERT4( !s1->next );
         s1->next = s2;
         return s1;
     }
     static CStep* group( std::function< void( const std::exception* ) > fn, CStep* s2 ) {
         return group( new CStep( fn ), s2 );
     }
-	static CStep* group( CStep* s1, std::function< void( const std::exception* ) > fn ) {
-		return group( s1, new CStep( fn ) );
-	}
-	static CStep* iif( const Future<bool>& b, std::function< void( const std::exception* ) > fn1, std::function< void( const std::exception* ) > fn2 ) 		{
-        CStep* s = new CStep;
-        s->opCode = CStep::COND;
-        s->id = 0;
-        s->fn = [ = ]( const std::exception * ex ) {
-            if( b.value() )
-                fn1( ex );
-            else
-                fn2( ex );
-            CStep::afterEvent( s );
-        };
-        return s;
+    static CStep* group( CStep* s1, std::function< void( const std::exception* ) > fn ) {
+        return group( s1, new CStep( fn ) );
     }
 };
-
-void CStep::afterEvent( const CStep* s ) {
-    ATRACE0( "afterEvent id {}", s->id );
-    CCode::exec( s->next );
-}
 
 class NodeServer3 : public Node	{
   public:
@@ -269,20 +271,20 @@ class NodeServer3 : public Node	{
         Future<Timer> data( this ), data2( this ), data3( this );
         CCode code( this, CCode::ttry(
         CCode::group( [ = ]( const std::exception* ) {
-            startTimeout( data, this, 10 );
+            startTimeout( data, this, 5 );
         },
         CCode::group( CCode::waitFor( data, [ = ]( const std::exception* ) {
             infraConsole.log( "READ1: file {}---{}", fname.c_str(), "data" );
-            startTimeout( data2, this, 11 );
+            startTimeout( data2, this, 6 );
         } ),
         CCode::group( CCode::waitFor( data2, [ = ]( const std::exception* ) {
             infraConsole.log( "READ2: {} : {}", "data", "data2" );
-            startTimeout( data3, this, 12 );
+            startTimeout( data3, this, 7 );
         } ),
         CCode::waitFor( data3, [ = ]( const std::exception* ) {
             infraConsole.log( "READ3: {} : {}", "data2", "data3" );
         } ) ) ) )
-        ).ccatch( [ = ]( const std::exception & x ) {
+        )->ccatch( [ = ]( const std::exception & x ) {
             infraConsole.log( "oopsies: {}", x.what() );
         } ) );//ccatch+code
     }
@@ -296,31 +298,34 @@ class NodeServer4 : public Node {
         Future<bool> cond( this );
         CCode code( this, CCode::ttry(
         CCode::group( [ = ]( const std::exception* ) {
-            startTimeout( data, this, 10 );
+            startTimeout( data, this, 5 );
         },
         CCode::group( CCode::waitFor( data, [ = ]( const std::exception* ) {
             infraConsole.log( "READ1: file {}---{}", fname.c_str(), "data" );
             *( ( bool* )&cond.value() ) = false;
         } ),
-        CCode::group( CCode::iif( cond, [ = ]( const std::exception* ) {
-            startTimeout( data2, this, 12 );
+
+        CCode::group( CCode::iif( cond, CCode::group( [ = ]( const std::exception* ) {
+            startTimeout( data2, this, 6 );
             infraConsole.log( "Positive branch" );
-            CCode::waitFor( data2, [ = ]( const std::exception* ) {
-                infraConsole.log( "READ2: {} : {}", "data", "data2" );
-            } );
         },
+        CCode::waitFor( data2, [ = ]( const std::exception* ) {
+            infraConsole.log( "READ2: {} : {}", "data", "data2" );
+        } )
+                                                    ),
         // eelse
-        [ = ]( const std::exception* ) {
-            startTimeout( data3, this, 13 );
+        CCode::group( [ = ]( const std::exception* ) {
+            startTimeout( data3, this, 7 );
             infraConsole.log( "Negative branch" );
-            CCode::waitFor( data3, [ = ]( const std::exception* ) {
-                infraConsole.log( "READ3: {} : {}", "data", "data3" );
-            } );
-        } ),
+        },
+        CCode::waitFor( data3, [ = ]( const std::exception* ) {
+            infraConsole.log( "READ3: {} : {}", "data", "data3" );
+        } )
+                    ) ),
         [ = ]( const std::exception* ) {
             infraConsole.log( "Invariant after iif" );
         } ) ) )
-        ).ccatch( [ = ]( const std::exception & x ) {
+        )->ccatch( [ = ]( const std::exception & x ) {
             infraConsole.log( "oopsies: {}", x.what() );
         } ) );//ccatch+code
     }
