@@ -169,7 +169,7 @@ class CStep {
 
     CStep() {
         opCode = NONE;
-		id = 0;
+        id = 0;
         next = nullptr;
     }
     explicit CStep( std::function< void( const std::exception* ) > fn_ ) {
@@ -178,12 +178,18 @@ class CStep {
         fn = fn_;
         next = nullptr;
     }
-	CStep( CStep&& other );
+    CStep( CStep&& other );
     CStep( const CStep& other ) = default;
-	~CStep() = default;
+    ~CStep() = default;
 
     CStep* ccatch( std::function< void( const std::exception& ) > fn ) {
         return this;
+    }
+    CStep* endOfChain() {
+        auto p = this;
+        while( p->next )
+            p = p->next;
+        return p;
     }
 };
 
@@ -191,7 +197,7 @@ class CCode {
   public:
     static void exec( const CStep* s ) {
         while( s ) {
-           if( CStep::WAIT == s->opCode ) {
+            if( CStep::WAIT == s->opCode ) {
                 ATRACE0( "Waiting {} ...", s->id );
                 return;
             } else {
@@ -199,15 +205,15 @@ class CCode {
                 s->fn( nullptr );
             }
 
-			auto tmp = s;
-			s = s->next;
-			delete tmp;
+            auto tmp = s;
+            s = s->next;
+            delete tmp;
         }
     }
     static void debugPrint( const CStep* s ) {
         if( !s )
             return;
-        ATRACE0( "{} OpCode {} id {}", (void*)s, s->opCode, s->id );
+        ATRACE0( "{} OpCode {} id {}", ( void* )s, s->opCode, s->id );
         debugPrint( s->next );
     }
     CCode( Node*, const CStep* s ) {
@@ -233,19 +239,28 @@ class CCode {
         CStep* s = new CStep;
         s->opCode = CStep::COND;
         s->id = 0;
+        auto e1 = s1->endOfChain();
+        auto e2 = s2->endOfChain();
         s->fn = [ = ]( const std::exception * ex ) {
             // insert active branch into exec list
-            auto p = ( b.value() ? s1  : s2 );
+            CStep* active, *passive, *end;
+            if( b.value() ) {
+                active = s1;
+                passive = s2;
+                end = e1;
+            } else {
+                active = s2;
+                passive = s1;
+                end = e2;
+            }
+            // insert active branch in execution chain
             auto tmp = s->next;
-            s->next = p;
-            while( p->next )
-                p = p->next;
-            p->next = tmp;
+            s->next = active;
+            end->next = tmp;
             // delete passive branch
-            p = ( b.value() ? s2 : s1 );
-            while( p ) {
-                tmp = p;
-                p = p->next;
+            while( passive ) {
+                tmp = passive;
+                passive = passive->next;
                 delete tmp;
             }
         };
