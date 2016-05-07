@@ -227,7 +227,7 @@ class CCode {
         CStep* s = new CStep;
         s->opCode = CStep::WAIT;
         s->id = future.infraGetId();
-        future.then( [ = ]( const std::exception * ex ) {
+        future.then( [ fn, s ]( const std::exception * ex ) {
             fn( ex );
             exec( s->next );
         } );
@@ -241,7 +241,7 @@ class CCode {
         s->id = 0;
         auto e1 = s1->endOfChain();
         auto e2 = s2->endOfChain();
-        s->fn = [ = ]( const std::exception * ex ) {
+        s->fn = [ s, s1, s2, e1, e2, b ]( const std::exception * ex ) {
             // insert active branch into exec list
             CStep* active, *passive, *end;
             if( b.value() ) {
@@ -313,7 +313,7 @@ class NodeServer4 : public Node {
         Future<bool> cond( this );
         CCode code( this, CCode::ttry(
         CCode::group( [ = ]( const std::exception* ) {
-            startTimeout( data, this, 5 );
+            startTimeout( data, this, 20 );
         },
         CCode::group( CCode::waitFor( data, [ = ]( const std::exception* ) {
             infraConsole.log( "READ1: file {}---{}", fname.c_str(), "data" );
