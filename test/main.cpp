@@ -163,18 +163,18 @@ class CStep {
   public:
     enum { NONE = 0, WAIT, EXEC, COND };
     unsigned int opCode;
-    unsigned int id;
+    InfraFutureBase* infraPtr;
     std::function< void( const std::exception* ) > fn;
     CStep* next;
 
     CStep() {
         opCode = NONE;
-        id = 0;
+        infraPtr = nullptr;
         next = nullptr;
     }
     explicit CStep( std::function< void( const std::exception* ) > fn_ ) {
         opCode = EXEC;
-        id = 0;
+        infraPtr = nullptr;
         fn = fn_;
         next = nullptr;
     }
@@ -198,7 +198,7 @@ class CCode {
     static void exec( const CStep* s ) {
         while( s ) {
             if( CStep::WAIT == s->opCode ) {
-                ATRACE0( "Waiting {} ...", s->id );
+                ATRACE0( "Waiting {} ...", ( void* )s->infraPtr );
                 return;
             } else {
                 AASSERT4( ( CStep::EXEC == s->opCode ) || ( CStep::COND == s->opCode ) );
@@ -213,7 +213,7 @@ class CCode {
     static void debugPrint( const CStep* s ) {
         if( !s )
             return;
-        ATRACE0( "{} OpCode {} id {}", ( void* )s, s->opCode, s->id );
+        ATRACE0( "{} OpCode {} id {}", ( void* )s, s->opCode, ( void* )s->infraPtr );
         debugPrint( s->next );
     }
     CCode( Node*, const CStep* s ) {
@@ -226,7 +226,7 @@ class CCode {
     static CStep* waitFor( const Future<Timer>& future, std::function< void( const std::exception* ) > fn ) {
         CStep* s = new CStep;
         s->opCode = CStep::WAIT;
-        s->id = future.infraGetId();
+        s->infraPtr = future.infraGetPtr();
         future.then( [ fn, s ]( const std::exception * ex ) {
             fn( ex );
             exec( s->next );
@@ -238,7 +238,6 @@ class CCode {
         AASSERT4( s2 );
         CStep* s = new CStep;
         s->opCode = CStep::COND;
-        s->id = 0;
         auto e1 = s1->endOfChain();
         auto e2 = s2->endOfChain();
         s->fn = [ s, s1, s2, e1, e2, b ]( const std::exception * ex ) {
@@ -261,6 +260,8 @@ class CCode {
             while( passive ) {
                 tmp = passive;
                 passive = passive->next;
+                if( tmp->infraPtr )
+                    tmp->infraPtr->cleanup();
                 delete tmp;
             }
         };

@@ -79,6 +79,9 @@ class Future {
     FutureId infraGetId() const {
         return futureId;
     }
+    InfraFutureBase* infraGetPtr() const {
+        return infraPtr;
+    }
     void infraAssign( const Future& other ) const {
         AASSERT4( 0 == futureId );
         AASSERT4( node == other.node );
@@ -137,7 +140,7 @@ template< typename T >
 void Future< T >::then( const FutureFunction& fn ) const {
     AASSERT4( infraPtr == node->findInfraFuture( futureId ) );
     infraPtr->fn = fn;
-    infraPtr->refCount++;
+    infraPtr->refCount++; // NOTE: see corresponding refCount-- in InfraFutureBase::cleanup()
 }
 
 template< typename T >
