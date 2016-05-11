@@ -46,6 +46,7 @@ class Node {
     FutureId nextFutureIdCount = 0;
 
   public:
+    virtual ~Node() = default;
     InfraNodeContainer* parentFS;
 
     FutureId nextFutureId() {
