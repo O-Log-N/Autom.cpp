@@ -224,6 +224,11 @@ class CCode {
     static CStep* ttry( CStep* s ) {
         return s;
     }
+    template< typename T, typename... Ts >
+    static T ttry( T s, Ts... Vals ) {
+        s->next = ttry( Vals... );
+        return s;
+    }
     static CStep* waitFor( const Future<Timer>& future, std::function< void( const std::exception* ) > fn ) {
         CStep* s = new CStep;
         s->debugOpCode = CStep::WAIT;
@@ -287,20 +292,20 @@ class NodeServer3 : public Node	{
         std::string fname( "path1" );
         Future<Timer> data( this ), data2( this ), data3( this );
         CCode code( this, CCode::ttry(
-        CCode::group( [ = ]( const std::exception* ) {
+        new CStep( [ = ]( const std::exception* ) {
             startTimeout( data, this, 5 );
             startTimeout( data3, this, 4 );
-        },
-        CCode::group( CCode::waitFor( data, [ = ]( const std::exception* ) {
+        } ),
+        CCode::waitFor( data, [ = ]( const std::exception* ) {
             infraConsole.log( "READ1: file {}---{}", fname.c_str(), "data" );
             startTimeout( data2, this, 6 );
         } ),
-        CCode::group( CCode::waitFor( data2, [ = ]( const std::exception* ) {
+        CCode::waitFor( data2, [ = ]( const std::exception* ) {
             infraConsole.log( "READ2: {} : {}", "data", "data2" );
         } ),
         CCode::waitFor( data3, [ = ]( const std::exception* ) {
             infraConsole.log( "READ3: {} : {}", "data2", "data3" );
-        } ) ) ) )
+        } )
         )->ccatch( [ = ]( const std::exception & x ) {
             infraConsole.log( "oopsies: {}", x.what() );
         } ) );//ccatch+code
@@ -314,22 +319,22 @@ class NodeServer4 : public Node {
         Future<Timer> data( this ), data2( this ), data3( this );
         Future<bool> cond( this );
         CCode code( this, CCode::ttry(
-        CCode::group( [ = ]( const std::exception* ) {
+        new CStep( [ = ]( const std::exception* ) {
             startTimeout( data, this, 5 );
-        },
-        CCode::group( CCode::waitFor( data, [ = ]( const std::exception* ) {
+        } ),
+        CCode::waitFor( data, [ = ]( const std::exception* ) {
             infraConsole.log( "READ1: file {}---{}", fname.c_str(), "data" );
             *( ( bool* )&cond.value() ) = false;
         } ),
 
-        CCode::group( CCode::iif( cond, CCode::group( [ = ]( const std::exception* ) {
+        CCode::iif( cond, CCode::group( [ = ]( const std::exception* ) {
             startTimeout( data2, this, 6 );
             infraConsole.log( "Positive branch" );
         },
         CCode::waitFor( data2, [ = ]( const std::exception* ) {
             infraConsole.log( "READ2: {} : {}", "data", "data2" );
         } )
-                                                    ),
+                                      ),
         // eelse
         CCode::group( [ = ]( const std::exception* ) {
             startTimeout( data3, this, 7 );
@@ -339,9 +344,9 @@ class NodeServer4 : public Node {
             infraConsole.log( "READ3: {} : {}", "data", "data3" );
         } )
                     ) ),
-        [ = ]( const std::exception* ) {
+        new CStep( [ = ]( const std::exception* ) {
             infraConsole.log( "Invariant after iif" );
-        } ) ) )
+        } )
         )->ccatch( [ = ]( const std::exception & x ) {
             infraConsole.log( "oopsies: {}", x.what() );
         } ) );//ccatch+code
@@ -355,22 +360,22 @@ class NodeServer5 : public Node {
         Future<Timer> data( this ), data2( this ), data3( this ), data4( this ), data5( this );
         Future<bool> cond( this );
         CCode code( this, CCode::ttry(
-        CCode::group( [ = ]( const std::exception* ) {
+        new CStep( [ = ]( const std::exception* ) {
             startTimeout( data, this, 5 );
-        },
-        CCode::group( CCode::waitFor( data, [ = ]( const std::exception* ) {
+        } ),
+        CCode::waitFor( data, [ = ]( const std::exception* ) {
             infraConsole.log( "READ1: file {}---{}", fname.c_str(), "data" );
             *( ( bool* )&cond.value() ) = false;
         } ),
 
-        CCode::group( CCode::iif( cond, CCode::group( [ = ]( const std::exception* ) {
+        CCode::iif( cond, CCode::group( [ = ]( const std::exception* ) {
             startTimeout( data2, this, 6 );
             infraConsole.log( "Positive branch" );
         },
         CCode::waitFor( data2, [ = ]( const std::exception* ) {
             infraConsole.log( "READ2: {} : {}", "data", "data2" );
         } )
-                                                    ),
+                                      ),
         // eelse
         CCode::group( [ = ]( const std::exception* ) {
             startTimeout( data3, this, 7 );
@@ -398,7 +403,6 @@ class NodeServer5 : public Node {
             infraConsole.log( "READ5" );
         } )
                     ) )
-                    ) ) )
         )->ccatch( [ = ]( const std::exception & x ) {
             infraConsole.log( "oopsies: {}", x.what() );
         } ) );//ccatch+code
@@ -407,7 +411,7 @@ class NodeServer5 : public Node {
 
 void testServer() {
     InfraNodeContainer fs;
-    Node* p = new NodeServer3;
+    Node* p = new NodeServer4;
     fs.addNode( p );
     fs.run();
     fs.removeNode( p );
