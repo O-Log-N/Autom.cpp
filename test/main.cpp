@@ -162,18 +162,18 @@ class NodeServer2 : public Node {
 class CStep {
   public:
     enum { NONE = 0, WAIT, EXEC, COND };
-    unsigned int opCode;
+    int debugOpCode;
     InfraFutureBase* infraPtr;
     std::function< void( const std::exception* ) > fn;
     CStep* next;
 
     CStep() {
-        opCode = NONE;
+        debugOpCode = NONE;
         infraPtr = nullptr;
         next = nullptr;
     }
     explicit CStep( std::function< void( const std::exception* ) > fn_ ) {
-        opCode = EXEC;
+        debugOpCode = EXEC;
         infraPtr = nullptr;
         fn = fn_;
         next = nullptr;
@@ -197,11 +197,12 @@ class CCode {
   public:
     static void exec( const CStep* s ) {
         while( s ) {
-            if( CStep::WAIT == s->opCode ) {
+            if( s->infraPtr ) {
+                AASSERT4( CStep::WAIT == s->debugOpCode );
                 ATRACE0( "Waiting {} ...", ( void* )s->infraPtr );
                 return;
             } else {
-                AASSERT4( ( CStep::EXEC == s->opCode ) || ( CStep::COND == s->opCode ) );
+                AASSERT4( ( CStep::EXEC == s->debugOpCode ) || ( CStep::COND == s->debugOpCode ) );
                 s->fn( nullptr );
             }
 
@@ -213,7 +214,7 @@ class CCode {
     static void debugPrint( const CStep* s ) {
         if( !s )
             return;
-        ATRACE0( "{} OpCode {} id {}", ( void* )s, s->opCode, ( void* )s->infraPtr );
+        ATRACE0( "{} OpCode {} id {}", ( void* )s, s->debugOpCode, ( void* )s->infraPtr );
         debugPrint( s->next );
     }
     CCode( Node*, const CStep* s ) {
@@ -225,9 +226,9 @@ class CCode {
     }
     static CStep* waitFor( const Future<Timer>& future, std::function< void( const std::exception* ) > fn ) {
         CStep* s = new CStep;
-        s->opCode = CStep::WAIT;
+        s->debugOpCode = CStep::WAIT;
         s->infraPtr = future.infraGetPtr();
-        future.then( [ fn, s ]( const std::exception * ex ) {
+        future.then( [fn, s]( const std::exception * ex ) {
             fn( ex );
             exec( s->next );
         } );
@@ -237,7 +238,7 @@ class CCode {
         AASSERT4( s1 );
         AASSERT4( s2 );
         CStep* s = new CStep;
-        s->opCode = CStep::COND;
+        s->debugOpCode = CStep::COND;
         auto e1 = s1->endOfChain();
         auto e2 = s2->endOfChain();
         s->fn = [ s, s1, s2, e1, e2, b ]( const std::exception * ex ) {
@@ -288,6 +289,7 @@ class NodeServer3 : public Node	{
         CCode code( this, CCode::ttry(
         CCode::group( [ = ]( const std::exception* ) {
             startTimeout( data, this, 5 );
+            startTimeout( data3, this, 4 );
         },
         CCode::group( CCode::waitFor( data, [ = ]( const std::exception* ) {
             infraConsole.log( "READ1: file {}---{}", fname.c_str(), "data" );
@@ -295,7 +297,6 @@ class NodeServer3 : public Node	{
         } ),
         CCode::group( CCode::waitFor( data2, [ = ]( const std::exception* ) {
             infraConsole.log( "READ2: {} : {}", "data", "data2" );
-            startTimeout( data3, this, 7 );
         } ),
         CCode::waitFor( data3, [ = ]( const std::exception* ) {
             infraConsole.log( "READ3: {} : {}", "data2", "data3" );
@@ -314,7 +315,7 @@ class NodeServer4 : public Node {
         Future<bool> cond( this );
         CCode code( this, CCode::ttry(
         CCode::group( [ = ]( const std::exception* ) {
-            startTimeout( data, this, 20 );
+            startTimeout( data, this, 5 );
         },
         CCode::group( CCode::waitFor( data, [ = ]( const std::exception* ) {
             infraConsole.log( "READ1: file {}---{}", fname.c_str(), "data" );
@@ -347,9 +348,66 @@ class NodeServer4 : public Node {
     }
 };
 
+class NodeServer5 : public Node {
+  public:
+    void run() override {
+        std::string fname( "path1" );
+        Future<Timer> data( this ), data2( this ), data3( this ), data4( this ), data5( this );
+        Future<bool> cond( this );
+        CCode code( this, CCode::ttry(
+        CCode::group( [ = ]( const std::exception* ) {
+            startTimeout( data, this, 5 );
+        },
+        CCode::group( CCode::waitFor( data, [ = ]( const std::exception* ) {
+            infraConsole.log( "READ1: file {}---{}", fname.c_str(), "data" );
+            *( ( bool* )&cond.value() ) = false;
+        } ),
+
+        CCode::group( CCode::iif( cond, CCode::group( [ = ]( const std::exception* ) {
+            startTimeout( data2, this, 6 );
+            infraConsole.log( "Positive branch" );
+        },
+        CCode::waitFor( data2, [ = ]( const std::exception* ) {
+            infraConsole.log( "READ2: {} : {}", "data", "data2" );
+        } )
+                                                    ),
+        // eelse
+        CCode::group( [ = ]( const std::exception* ) {
+            startTimeout( data3, this, 7 );
+            infraConsole.log( "Negative branch" );
+            *( ( bool* )&cond.value() ) = true;
+        },
+        CCode::waitFor( data3, [ = ]( const std::exception* ) {
+            infraConsole.log( "READ3" );
+        } )
+                    ) ),
+        CCode::iif( cond, CCode::group( [ = ]( const std::exception* ) {
+            startTimeout( data4, this, 6 );
+            infraConsole.log( "Positive branch" );
+        },
+        CCode::waitFor( data4, [ = ]( const std::exception* ) {
+            infraConsole.log( "READ4" );
+        } )
+                                      ),
+        // eelse
+        CCode::group( [ = ]( const std::exception* ) {
+            startTimeout( data5, this, 7 );
+            infraConsole.log( "Negative branch" );
+        },
+        CCode::waitFor( data5, [ = ]( const std::exception* ) {
+            infraConsole.log( "READ5" );
+        } )
+                    ) )
+                    ) ) )
+        )->ccatch( [ = ]( const std::exception & x ) {
+            infraConsole.log( "oopsies: {}", x.what() );
+        } ) );//ccatch+code
+    }
+};
+
 void testServer() {
     InfraNodeContainer fs;
-    Node* p = new NodeServer4;
+    Node* p = new NodeServer3;
     fs.addNode( p );
     fs.run();
     fs.removeNode( p );
