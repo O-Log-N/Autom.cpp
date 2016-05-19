@@ -158,128 +158,99 @@ class NodeServer2 : public Node {
     }
 };
 
-
-class CStep {
+class AStep {
   public:
     enum { NONE = 0, WAIT, EXEC, COND };
     int debugOpCode;
     InfraFutureBase* infraPtr;
     std::function< void( const std::exception* ) > fn;
-    CStep* next;
+    AStep* next;
 
-    CStep() {
+    AStep() {
         debugOpCode = NONE;
         infraPtr = nullptr;
         next = nullptr;
     }
-    explicit CStep( std::function< void( const std::exception* ) > fn_ ) {
+    explicit AStep( std::function< void( const std::exception* ) > fn_ ) {
         debugOpCode = EXEC;
         infraPtr = nullptr;
         fn = fn_;
         next = nullptr;
     }
-    CStep( CStep&& other );
-    CStep( const CStep& other ) = default;
-    ~CStep() = default;
+    AStep( AStep&& other );
+    AStep( const AStep& other ) = default;
+    ~AStep() = default;
 
-    CStep* ccatch( std::function< void( const std::exception& ) > fn ) {
-        return this;
-    }
-    CStep* endOfChain() {
+    AStep* endOfChain() {
         auto p = this;
         while( p->next )
             p = p->next;
         return p;
     }
+    void debugPrint() const {
+        ATRACE0( "{} opCode {} {}", ( void* )this, debugOpCode, ( void* )infraPtr );
+        if( next )
+            next->debugPrint();
+    }
 };
 
-class CCode {
+class CStep {
   public:
-    static void exec( const CStep* s ) {
-        while( s ) {
-            if( s->infraPtr ) {
-                AASSERT4( CStep::WAIT == s->debugOpCode );
-                ATRACE0( "Waiting {} ...", ( void* )s->infraPtr );
-                return;
-            } else {
-                AASSERT4( ( CStep::EXEC == s->debugOpCode ) || ( CStep::COND == s->debugOpCode ) );
-                s->fn( nullptr );
-            }
+    AStep* step;
+    const Future<bool>* condition;
 
-            auto tmp = s;
-            s = s->next;
-            delete tmp;
-        }
-    }
-    static void debugPrint( const CStep* s ) {
-        if( !s )
-            return;
-        ATRACE0( "{} OpCode {} id {}", ( void* )s, s->debugOpCode, ( void* )s->infraPtr );
-        debugPrint( s->next );
-    }
-    CCode( Node*, const CStep* s ) {
-        debugPrint( s );
-        exec( s );
-    }
-    static CStep* ttry( CStep* s ) {
-        return s;
-    }
-    static CStep* ttry( std::function< void() > fn ) {
-        return new CStep( [ = ]( const std::exception* ) {
+    CStep() : step( nullptr ), condition( nullptr ) {}
+    CStep( AStep* p ) : step( p ), condition( nullptr ) {}
+    CStep( std::function< void( void ) > fn ) : condition( nullptr ) {
+        step = new AStep( [ = ]( const std::exception* ) {
             fn();
         } );
     }
-    template< typename... Ts >
-    static CStep* ttry( CStep* s, Ts... Vals ) {
-        s->next = ttry( Vals... );
+    CStep( const CStep& ) = default;
+    CStep( CStep&& ) = default;
+    CStep& operator=( CStep&& ) = default;
+
+    CStep ccatch( std::function< void( const std::exception* ) > fn ) {
+        return *this;
+    }
+
+  private:
+    CStep infraEelse( CStep s ) {
         return s;
     }
-    template< typename... Ts >
-    static CStep* ttry( std::function< void() > fn, Ts... Vals ) {
-        CStep* s = new CStep( [ = ]( const std::exception* ) {
-            fn();
-        } );
-        s->next = ttry( Vals... );
-        return s;
+    CStep infraEelse( std::function< void( void ) > fn ) {
+        return CStep( fn );
     }
-    static CStep* waitFor( const Future<Timer>& future, std::function< void( void ) > fn ) {
-        CStep* s = new CStep;
-        s->debugOpCode = CStep::WAIT;
-        s->infraPtr = future.infraGetPtr();
-        future.then( [fn, s]( const std::exception * ex ) {
-            fn();
-            exec( s->next );
-        } );
-        return s;
-    }
-    static CStep* iif( const Future<bool>& b, std::function< void( void ) > fn, CStep* s2 ) {
-        return iif( b, fn, s2 );
-    }
-    static CStep* iif( const Future<bool>& b, CStep* s1, std::function< void( void ) > fn ) {
-        return iif( b, s1, fn );
-    }
-    static CStep* iif( const Future<bool>& b, CStep* s1, CStep* s2 ) {
-        AASSERT4( s1 );
-        AASSERT4( s2 );
-        CStep* s = new CStep;
-        s->debugOpCode = CStep::COND;
-        auto e1 = s1->endOfChain();
-        auto e2 = s2->endOfChain();
-        s->fn = [ s, s1, s2, e1, e2, b ]( const std::exception * ex ) {
+    void infraEelseImpl( CStep* first, AStep* second ) {
+        AASSERT4( first );
+        AASSERT4( first->step );
+		AASSERT4( first->step->next );
+		AASSERT4( first->step->debugOpCode == AStep::COND );
+        AASSERT4( first->condition );
+        AASSERT4( second );
+
+        AStep* f = first->step->next;
+        auto e1 = f->endOfChain();
+        auto e2 = second->endOfChain();
+        const Future<bool>& b = *first->condition;
+        first->condition = nullptr;
+        f->fn = [ b, f, second, e1, e2 ]( const std::exception * ex ) {
             // insert active branch into exec list
-            CStep* active, *passive, *end;
+            AStep* active, *passive, *end;
             if( b.value() ) {
-                active = s1;
-                passive = s2;
+                ATRACE0( "====IFELSE POSITIVE====" );
+                active = f;
+                passive = second;
                 end = e1;
             } else {
-                active = s2;
-                passive = s1;
+                ATRACE0( "====IFELSE NEGATIVE====" );
+                active = second;
+                passive = f;
                 end = e2;
             }
             // insert active branch in execution chain
-            auto tmp = s->next;
-            s->next = active;
+            auto tmp = f->next;
+            f->next = active;
             end->next = tmp;
             // delete passive branch
             while( passive ) {
@@ -290,35 +261,191 @@ class CCode {
                 delete tmp;
             }
         };
-        return s;
     }
-    static CStep* iifBranch( std::function< void( void ) > fn ) {
-        return new CStep( [ = ]( const std::exception* ) {
-            fn();
-        } );
-    }
-    static CStep* iifBranch( CStep* s ) {
-        return s;
+
+  public:
+    template< typename... Ts >
+    CStep eelse( std::function< void( void ) > fn, Ts... Vals ) {
+        AASSERT4( step->debugOpCode == AStep::COND );
+        CStep s( fn );
+        s.step->next = infraEelse( Vals... ).step;
+        infraEelseImpl( this, s.step );
+        return *this;
     }
     template< typename... Ts >
-    static CStep* iifBranch( CStep* s, Ts... Vals ) {
-        s->next = iifBranch( Vals... );
-        return s;
-    }
-    template< typename... Ts >
-    static CStep* iifBranch( std::function< void() > fn, Ts... Vals ) {
-        CStep* s = iifBranch( fn );
-        s->next = iifBranch( Vals... );
-        return s;
+    CStep eelse( CStep s, Ts... Vals ) {
+        AASSERT4( step->debugOpCode == AStep::COND );
+        s.step->next = infraEelse( Vals... ).step;
+        infraEelseImpl( this, s.step );
+        return *this;
     }
 };
 
-class NodeServer3 : public Node	{
+class CCode {
+  public:
+    static void exec( const AStep* s ) {
+        while( s ) {
+            if( s->infraPtr ) {
+                AASSERT4( AStep::WAIT == s->debugOpCode );
+                ATRACE0( "Waiting {} ...", ( void* )s->infraPtr );
+                return;
+            } else {
+                AASSERT4( ( AStep::EXEC == s->debugOpCode ) || ( AStep::COND == s->debugOpCode ) );
+                s->fn( nullptr );
+            }
+
+            auto tmp = s;
+            s = s->next;
+            delete tmp;
+        }
+    }
+    static void debugPrint( const AStep* s ) {
+        if( !s )
+            return;
+        ATRACE0( "{} OpCode {} id {}", ( void* )s, s->debugOpCode, ( void* )s->infraPtr );
+        debugPrint( s->next );
+    }
+    CCode( const CStep& s ) {
+        debugPrint( s.step );
+        exec( s.step );
+    }
+
+  private:
+    static CStep chain( std::function< void( void ) > fn ) {
+        return CStep( fn );
+    }
+    static CStep chain( CStep s ) {
+        return s;
+    }
+    template< typename... Ts >
+    static CStep chain( std::function< void( void ) > fn, Ts&&... Vals ) {
+        CStep s( fn );
+        s.step->next = chain( Vals... ).step;
+        return s;
+    }
+    template< typename... Ts >
+    static CStep chain( CStep s, Ts&&... Vals ) {
+        AASSERT4( nullptr == s.step->next );
+        s.step->next = chain( Vals... ).step;
+        return s;
+    }
+
+  public:
+    static CStep ttry( CStep s ) {
+        return s;
+    }
+    static CStep ttry( std::function< void( void ) > fn ) {
+        return CStep( fn );
+    }
+    template< typename... Ts >
+    static CStep ttry( CStep s, Ts&&... Vals ) {
+        s.step->next = ttry( Vals... ).step;
+        return s;
+    }
+    template< typename... Ts >
+    static CStep ttry( std::function< void( void ) > fn, Ts&&... Vals ) {
+        CStep s = ttry( fn );
+        s.step->next = ttry( Vals... ).step;
+        return s;
+    }
+    static CStep waitFor( const Future<Timer>& future, std::function< void( void ) > fn ) {
+        AStep* a = new AStep;
+        a->debugOpCode = AStep::WAIT;
+        a->infraPtr = future.infraGetPtr();
+        CStep s;
+        s.step = a;
+        future.then( [fn, a]( const std::exception* ) {
+            fn();
+            exec( a->next );
+        } );
+        return s;
+    }
+
+  private:
+    static CStep infraIifImpl( const Future<bool>& b, AStep* c ) {
+        AStep* a = new AStep;
+        a->next = c;
+        a->debugOpCode = AStep::COND;
+        auto e = c->endOfChain();
+        a->fn = [a, c, e, b]( const std::exception * ex ) {
+            // insert active branch into exec list
+            AStep* active, *end;
+            if( b.value() ) {
+                ATRACE0( "====IF POSITIVE====" );
+                active = c;
+                end = e;
+            } else {
+                ATRACE0( "====IF NEGATIVE====" );
+                return;
+            }
+            // insert active branch in execution chain
+            auto tmp = a->next;
+            a->next = active;
+            end->next = tmp;
+        };
+        CStep s;
+        s.step = a;
+        s.condition = &b;
+        return s;
+    }
+
+  public:
+    template< typename... Ts >
+    static CStep iif( const Future<bool>& b, std::function< void( void ) > fn, Ts&&... Vals ) {
+        CStep s( fn );
+        s.step->next = chain( Vals... ).step;
+        return infraIifImpl( b, s.step );
+    }
+    template< typename... Ts >
+    static CStep iif( const Future<bool>& b, CStep s, Ts&&... Vals ) {
+        s.step->next = chain( Vals... ).step;
+        return infraIifImpl( b, s.step );
+    }
+    /*
+    		static CStep iif( const Future<bool>& b, CStep s1, CStep s2 ) {
+            AASSERT4( s1.step );
+            AASSERT4( s2.step );
+            CStep s;
+            s.step = new AStep;
+            s.step->debugOpCode = AStep::COND;
+            auto e1 = s1.step->endOfChain();
+            auto e2 = s2.step->endOfChain();
+            s.step->fn = [s, s1, s2, e1, e2, b]( const std::exception * ex ) {
+                // insert active branch into exec list
+                AStep* active, *passive, *end;
+                if( b.value() ) {
+                    active = s1.step;
+                    passive = s2.step;
+                    end = e1;
+                } else {
+                    active = s2.step;
+                    passive = s1.step;
+                    end = e2;
+                }
+                // insert active branch in execution chain
+                auto tmp = s.step->next;
+                s.step->next = active;
+                end->next = tmp;
+                // delete passive branch
+    			while( passive ) {
+    				tmp = passive;
+    				passive = passive->next;
+    				if( tmp->infraPtr )
+    					tmp->infraPtr->cleanup();
+    				delete tmp;
+    			}
+            };
+            return s;
+        }
+    */
+};
+
+class NodeServer3 : public Node {
   public:
     void run() override {
         std::string fname( "path1" );
         Future<Timer> data( this ), data2( this ), data3( this );
-        CCode code( this, CCode::ttry(
+        CCode code( CCode::ttry(
         [ = ]() {
             startTimeout( data, this, 5 );
             startTimeout( data3, this, 15 );
@@ -336,8 +463,8 @@ class NodeServer3 : public Node	{
         [ = ]() {
             infraConsole.log( "Last step" );
         }
-        )->ccatch( [ = ]( const std::exception & x ) {
-            infraConsole.log( "oopsies: {}", x.what() );
+        ).ccatch( [ = ]( const std::exception * x ) {
+            infraConsole.log( "oopsies: {}", x->what() );
         } ) );//ccatch+code
     }
 };
@@ -348,7 +475,7 @@ class NodeServer4 : public Node {
         std::string fname( "path1" );
         Future<Timer> data( this ), data2( this ), data3( this );
         Future<bool> cond( this );
-        CCode code( this, CCode::ttry(
+        CCode code( CCode::ttry(
         [ = ]() {
             startTimeout( data, this, 5 );
         },
@@ -357,28 +484,25 @@ class NodeServer4 : public Node {
             *( ( bool* )&cond.value() ) = false;
         } ),
         CCode::iif( cond,
-        CCode::iifBranch( [ = ]() {
+        [ = ]() {
             startTimeout( data2, this, 6 );
             infraConsole.log( "Positive branch" );
         },
         CCode::waitFor( data2, [ = ]() {
             infraConsole.log( "READ2: {} : {}", "data", "data2" );
-        } )
-                                    ),
-        // eelse
-        CCode::iifBranch( [ = ]() {
+        } ) ).eelse(
+        [ = ]() {
             startTimeout( data3, this, 7 );
             infraConsole.log( "Negative branch" );
         },
         CCode::waitFor( data3, [ = ]() {
             infraConsole.log( "READ3: {} : {}", "data", "data3" );
-        } ) )
-                  ),
+        } ) ),
         [ = ]() {
             infraConsole.log( "Invariant after iif" );
         }
-        )->ccatch( [ = ]( const std::exception & x ) {
-            infraConsole.log( "oopsies: {}", x.what() );
+        ).ccatch( [ = ]( const std::exception * x ) {
+            infraConsole.log( "oopsies: {}", x->what() );
         } ) );//ccatch+code
     }
 };
@@ -389,52 +513,48 @@ class NodeServer5 : public Node {
         std::string fname( "path1" );
         Future<Timer> data( this ), data2( this ), data3( this ), data4( this ), data5( this );
         Future<bool> cond( this );
-        CCode code( this, CCode::ttry(
+        CCode code( CCode::ttry(
         [ = ]() {
             startTimeout( data, this, 5 );
         },
         CCode::waitFor( data, [ = ]() {
             infraConsole.log( "READ1: file {}---{}", fname.c_str(), "data" );
-            *( ( bool* )&cond.value() ) = false;
+            *( ( bool* )&cond.value() ) = true;
         } ),
 
         CCode::iif( cond,
-        CCode::iifBranch( [ = ]() {
+        [ = ]() {
             startTimeout( data2, this, 6 );
-            infraConsole.log( "Positive branch" );
+            infraConsole.log( "Positive branch 1" );
         },
         CCode::waitFor( data2, [ = ]() {
             infraConsole.log( "READ2: {} : {}", "data", "data2" );
-        } ) ),
-        // eelse
-        CCode::iifBranch( [ = ]() {
+        } ) ).eelse(
+        [ = ]() {
             startTimeout( data3, this, 7 );
-            infraConsole.log( "Negative branch" );
+            infraConsole.log( "Negative branch 2" );
             *( ( bool* )&cond.value() ) = true;
         },
         CCode::waitFor( data3, [ = ]() {
             infraConsole.log( "READ3" );
-        } ) )
-                  ),
+        } ) ),
         CCode::iif( cond,
-        CCode::iifBranch( [ = ]() {
+        [ = ]() {
             startTimeout( data4, this, 6 );
-            infraConsole.log( "Positive branch" );
+            infraConsole.log( "Positive branch 3" );
         },
         CCode::waitFor( data4, [ = ]() {
             infraConsole.log( "READ4" );
-        } ) ),
-        // eelse
-        CCode::iifBranch( [ = ]() {
+        } ) ).eelse(
+        [ = ]() {
             startTimeout( data5, this, 7 );
             infraConsole.log( "Negative branch" );
         },
         CCode::waitFor( data5, [ = ]() {
             infraConsole.log( "READ5" );
         } ) )
-                  )
-        )->ccatch( [ = ]( const std::exception & x ) {
-            infraConsole.log( "oopsies: {}", x.what() );
+        ).ccatch( [ = ]( const std::exception * x ) {
+            infraConsole.log( "oopsies: {}", x->what() );
         } ) );//ccatch+code
     }
 };
