@@ -16,23 +16,23 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 
 namespace autom {
 
-void CIfStep::infraEelseImpl( CIfStep* first, AStep* second ) {
-    AASSERT4( first );
-    AASSERT4( first->step );
-    AASSERT4( !first->step->next );
-    AASSERT4( first->step->debugOpCode == AStep::COND );
-    AASSERT4( first->condition );
-    AASSERT4( first->branch );
+void CIfStep::infraEelseImpl( AStep* second ) {
+    AASSERT4( this );
+    AASSERT4( step );
+    AASSERT4( !step->next );
+    AASSERT4( step->debugOpCode == AStep::COND );
+    AASSERT4( condition );
+    AASSERT4( branch );
     AASSERT4( second );
 
-    AStep* f = first->branch;
-    AStep* head = first->step;
+    AStep* f = branch;
+    AStep* head = step;
     auto e1 = f->endOfChain();
     auto e2 = second->endOfChain();
-    const Future<bool>& b = *first->condition;
-    f->debugPrintChain( "====IFELSE FIRST BRANCH" );
-    second->debugPrintChain( "====IFELSE SCOND BRANCH" );
-    first->step->fn = [b, f, head, second, e1, e2]( const std::exception * ex ) {
+    const Future<bool>& b = *condition;
+    f->debugDumpChain( "====IFELSE FIRST BRANCH" );
+    second->debugDumpChain( "====IFELSE SCOND BRANCH" );
+    step->fn = [b, f, head, second, e1, e2]( const std::exception * ex ) {
         // insert active branch into exec list
         AStep* active, *passive, *end;
         if( b.value() ) {
@@ -56,7 +56,7 @@ void CIfStep::infraEelseImpl( CIfStep* first, AStep* second ) {
             passive = passive->next;
             if( tmp->infraPtr )
                 tmp->infraPtr->cleanup();
-            tmp->debugPrint( "    deleting passive branch:" );
+            tmp->debugDump( "    deleting passive branch:" );
             delete tmp;
         }
     };
@@ -69,9 +69,10 @@ CStep CCode::waitFor( const FutureBase& future ) {
     CStep s;
     s.step = a;
     future.then( [a]( const std::exception* ) {
-        exec( a->next );
+        if( a->next )
+            exec( a->next );
     } );
-    s.step->debugPrintChain( "waitFor" );
+    s.step->debugDumpChain( "waitFor" );
     return s;
 }
 
@@ -81,7 +82,7 @@ CIfStep CCode::infraIifImpl( const Future<bool>& b, AStep* c ) {
     head->debugOpCode = AStep::COND;
 
     auto end = c->endOfChain();
-    c->debugPrintChain( "iifImpl" );
+    c->debugDumpChain( "iifImpl" );
 
     head->fn = [head, c, end, b]( const std::exception * ex ) {
         // insert active branch into exec list
@@ -91,7 +92,7 @@ CIfStep CCode::infraIifImpl( const Future<bool>& b, AStep* c ) {
             auto tmp = head->next;
             head->next = c;
             end->next = tmp;
-            head->debugPrintChain( "iif new exec chain:" );
+            head->debugDumpChain( "iif new exec chain:" );
         } else {
             INFRATRACE0( "====IF NEGATIVE====" );
             AStep* passive = c;
@@ -100,7 +101,7 @@ CIfStep CCode::infraIifImpl( const Future<bool>& b, AStep* c ) {
                 passive = passive->next;
                 if( tmp->infraPtr )
                     tmp->infraPtr->cleanup();
-                tmp->debugPrint( "    deleting iif branch:" );
+                tmp->debugDump( "    deleting iif branch:" );
                 delete tmp;
             }
         }
@@ -116,8 +117,16 @@ void CCode::exec( const AStep* s ) {
     while( s ) {
         if( s->infraPtr ) {
             AASSERT4( AStep::WAIT == s->debugOpCode );
-            INFRATRACE0( "Waiting {} ...", ( void* )s->infraPtr );
-            return;
+            AASSERT4( s->infraPtr->refCount > 0 );
+            if( s->infraPtr->isDataReady() ) {
+                INFRATRACE0( "Processing event {} ...", ( void* )s->infraPtr );
+                s->infraPtr->cleanup();
+                // node->futureCleanup();
+            } else {
+                INFRATRACE0( "Waiting event {} ...", ( void* )s->infraPtr );
+                s->infraPtr->setStepReady();
+                return;
+            }
         } else {
             AASSERT4( ( AStep::EXEC == s->debugOpCode ) || ( AStep::COND == s->debugOpCode ) );
             s->fn( nullptr );
@@ -125,7 +134,7 @@ void CCode::exec( const AStep* s ) {
 
         auto tmp = s;
         s = s->next;
-        tmp->debugPrint( "    deleting main" );
+        tmp->debugDump( "    deleting main" );
         delete tmp;
     }
 }

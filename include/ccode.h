@@ -54,13 +54,13 @@ class AStep {
             p = p->next;
         return p;
     }
-    void debugPrint( const char* prefix ) const {
-        INFRATRACE0( "{} {} '{}' infra->{} next->{}", prefix, ( void* )this, debugOpCode, ( void* )infraPtr, ( void* )next );
+    void debugDump( const char* prefix ) const {
+//        INFRATRACE0( "{} {} '{}' infra->{} next->{}", prefix, ( void* )this, debugOpCode, ( void* )infraPtr, ( void* )next );
     }
-    void debugPrintChain( const char* prefix ) const {
-        debugPrint( prefix );
+    void debugDumpChain( const char* prefix ) const {
+        debugDump( prefix );
         if( next )
-            next->debugPrintChain( "" );
+            next->debugDumpChain( "" );
     }
 };
 
@@ -85,18 +85,18 @@ class CStep {
 
     static CStep chain( StepFunction fn ) {
         CStep s( fn );
-        s.step->debugPrint( "chain 1" );
+        s.step->debugDump( "chain 1" );
         return s;
     }
     static CStep chain( CStep s ) {
-        s.step->debugPrint( "chain 2" );
+        s.step->debugDump( "chain 2" );
         return s;
     }
     template< typename... Ts >
     static CStep chain( StepFunction fn, Ts&&... Vals ) {
         CStep s( fn );
         s.step->next = chain( Vals... ).step;
-        s.step->debugPrint( "chain 2" );
+        s.step->debugDump( "chain 2" );
         return s;
     }
     template< typename... Ts >
@@ -120,31 +120,31 @@ class CIfStep : public CStep {
     CIfStep& operator=( CIfStep&& ) = default;
 
   private:
-    void infraEelseImpl( CIfStep* first, AStep* second );
+    void infraEelseImpl( AStep* second );
 
   public:
     CStep eelse( StepFunction fn ) {
         CStep s( fn );
-        infraEelseImpl( this, s.step );
+        infraEelseImpl( s.step );
         return *this;
     }
     CStep eelse( CStep s ) {
         AASSERT4( step->debugOpCode == AStep::COND );
-        infraEelseImpl( this, s.step );
+        infraEelseImpl( s.step );
         return *this;
     }
     template< typename... Ts >
     CStep eelse( StepFunction fn, Ts... Vals ) {
         CStep s( fn );
         s.step->next = chain( Vals... ).step;
-        infraEelseImpl( this, s.step );
+        infraEelseImpl( s.step );
         return *this;
     }
     template< typename... Ts >
     CStep eelse( CStep s, Ts... Vals ) {
         AASSERT4( step->debugOpCode == AStep::COND );
         s.step->next = chain( Vals... ).step;
-        infraEelseImpl( this, s.step );
+        infraEelseImpl( s.step );
         return *this;
     }
 };
@@ -152,32 +152,32 @@ class CIfStep : public CStep {
 class CCode {
   public:
     CCode( const CStep& s ) {
-        s.step->debugPrintChain( "main\n" );
+        s.step->debugDumpChain( "main\n" );
         exec( s.step );
     }
 
     static void exec( const AStep* s );
 
     static CStep ttry( CStep s ) {
-        s.step->debugPrint( "ttry 1" );
+        s.step->debugDump( "ttry 1" );
         return s;
     }
     static CStep ttry( StepFunction fn ) {
         CStep s( fn );
-        s.step->debugPrint( "ttry 2" );
+        s.step->debugDump( "ttry 2" );
         return s;
     }
     template< typename... Ts >
     static CStep ttry( CStep s, Ts&&... Vals ) {
         s.step->next = ttry( Vals... ).step;
-        s.step->debugPrint( "ttry 3" );
+        s.step->debugDump( "ttry 3" );
         return s;
     }
     template< typename... Ts >
     static CStep ttry( StepFunction fn, Ts&&... Vals ) {
         CStep s = ttry( fn );
         s.step->next = ttry( Vals... ).step;
-        s.step->debugPrint( "ttry 4" );
+        s.step->debugDump( "ttry 4" );
         return s;
     }
     static CStep waitFor( const FutureBase& future );
@@ -190,13 +190,13 @@ class CCode {
     static CIfStep iif( const Future<bool>& b, StepFunction fn, Ts&&... Vals ) {
         CStep s( fn );
         s.step->next = CStep::chain( Vals... ).step;
-        s.step->debugPrint( "iif 1" );
+        s.step->debugDump( "iif 1" );
         return infraIifImpl( b, s.step );
     }
     template< typename... Ts >
     static CIfStep iif( const Future<bool>& b, CStep s, Ts&&... Vals ) {
         s.step->next = CStep::chain( Vals... ).step;
-        s.step->debugPrint( "iif 2" );
+        s.step->debugDump( "iif 2" );
         return infraIifImpl( b, s.step );
     }
 };

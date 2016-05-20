@@ -23,6 +23,7 @@ void InfraNodeContainer::addNode( Node* node ) {
 }
 
 void InfraNodeContainer::removeNode( Node* node ) {
+    node->futureCleanup();
     AASSERT4( node->isEmpty() );
     nodes.erase( node );
 }

@@ -26,12 +26,28 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 namespace autom {
 
 class InfraFutureBase {
+    bool dataReady;
+    bool stepReady;
+
   public:
     FutureFunction fn;
     int refCount;
     bool multi;
 
+    InfraFutureBase() : dataReady( false ), stepReady( false ) {}
     virtual ~InfraFutureBase() {}
+    void setDataReady() {
+        dataReady = true;
+    }
+    bool isDataReady() const {
+        return dataReady;
+    }
+    void setStepReady() {
+        stepReady = true;
+    }
+    bool isStepReady() const {
+        return stepReady;
+    }
     void cleanup() {
         if( multi )
             return;
@@ -52,12 +68,14 @@ class InfraFuture : public InfraFutureBase {
 
   public:
     const T& getResult() const {
+        AASSERT0( isDataReady() );
         return result;
     }
-    T& getResult() {
+    T& infraGetData() {
         return result;
     }
-    void debugDump() const {
+
+    void debugDump() const override {
         INFRATRACE0( "    refcnt {} {}", refCount, multi );
     }
 };
@@ -82,6 +100,10 @@ class Future : public FutureBase {
     Future& operator=( const Future& );
     ~Future();
     void then( const FutureFunction& ) const override;
+    void setValue( const T& v ) const {
+        infraPtr->infraGetData() = v;
+        infraPtr->setDataReady();
+    }
     FutureId infraGetId() const {
         return futureId;
     }

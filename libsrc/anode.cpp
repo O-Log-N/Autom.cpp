@@ -23,9 +23,12 @@ using namespace autom;
 void Node::infraProcessTimer( const NodeQTimer& item ) {
     auto it = futureMap.find( item.id );
     if( it != futureMap.end() ) {
-        it->second->fn( nullptr );
-        it->second->cleanup();
-        futureCleanup();
+        it->second->setDataReady();
+        if( it->second->isStepReady() ) {
+            it->second->fn( nullptr );
+            it->second->cleanup();
+            futureCleanup();
+        }
     }
 }
 
@@ -33,7 +36,8 @@ void Node::infraProcessTcpAccept( const NodeQAccept& item ) {
     auto it = futureMap.find( item.id );
     if( it != futureMap.end() ) {
         auto f = static_cast<InfraFuture< TcpServerConn >*>( it->second.get() );
-        f->getResult().stream = ( uv_stream_t * )item.stream;
+        f->infraGetData().stream = ( uv_stream_t * )item.stream;
+        f->setDataReady();
         it->second->fn( nullptr );
         it->second->cleanup();
         futureCleanup();
@@ -44,7 +48,8 @@ void Node::infraProcessTcpRead( const NodeQBuffer& item ) {
     auto it = futureMap.find( item.id );
     if( it != futureMap.end() ) {
         auto f = static_cast<InfraFuture< Buffer >*>( it->second.get() );
-        std::exception* ex = f->getResult().fromNetwork( item.b );
+        std::exception* ex = f->infraGetData().fromNetwork( item.b );
+        f->setDataReady();
         it->second->fn( ex );
         delete ex;
         it->second->cleanup();
@@ -65,7 +70,8 @@ void Node::infraProcessTcpConnect( const NodeQConnect& item ) {
     auto it = futureMap.find( item.id );
     if( it != futureMap.end() ) {
         auto f = static_cast<InfraFuture< TcpClientConn >*>( it->second.get() );
-        f->getResult().stream = item.stream;
+        f->infraGetData().stream = item.stream;
+        f->setDataReady();
         it->second->fn( nullptr );
         it->second->cleanup();
         futureCleanup();

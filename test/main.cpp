@@ -163,24 +163,35 @@ class NodeServer3 : public Node {
   public:
     void run() override {
         std::string fname( "path1" );
-        Future<Timer> data( this ), data2( this ), data3( this );
+        Future<Timer> data1( this ), data2( this ), data3( this );
         CCode code( CCode::ttry(
         [ = ]() {
-            startTimeout( data, this, 5 );
-            startTimeout( data3, this, 15 );
+            startTimeout( data1, this, 15 );
+            startTimeout( data3, this, 5 );
+            infraConsole.log( "timers 1 and 3 started" );
         },
-        CCode::waitFor( data ),
+        CCode::waitFor( data1 ),
         [ = ]() {
-            infraConsole.log( "READ1: file {}---{}", fname.c_str(), "data" );
+            infraConsole.log( "Timer1: file {}", fname.c_str() );
             startTimeout( data2, this, 6 );
+            infraConsole.log( "timer 2 started" );
+        },
+        [ = ]() {
+            infraConsole.log( "After Timer1" );
         },
         CCode::waitFor( data2 ),
         [ = ]() {
-            infraConsole.log( "READ2: {} : {}", "data", "data2" );
+            infraConsole.log( "TIMER2:" );
+        },
+        [ = ]() {
+            infraConsole.log( "After Timer2" );
         },
         CCode::waitFor( data3 ),
         [ = ]() {
-            infraConsole.log( "READ3: {} : {}", "data2", "data3" );
+            infraConsole.log( "TIMER3" );
+        },
+        [ = ]() {
+            infraConsole.log( "After Timer3" );
         },
         [ = ]() {
             infraConsole.log( "Last step" );
@@ -204,7 +215,7 @@ class NodeServer4 : public Node {
         CCode::waitFor( data ),
         [ = ]() {
             infraConsole.log( "READ1: file {}---{}", fname.c_str(), "data" );
-            *( ( bool* )&cond.value() ) = false;
+            cond.setValue( false );
         },
         CCode::iif( cond,
         [ = ]() {
@@ -247,7 +258,7 @@ class NodeServer5 : public Node {
         CCode::waitFor( data ),
         [ = ]() {
             infraConsole.log( "READ1: file {}---{}", fname.c_str(), "data" );
-            *( ( bool* )&cond.value() ) = false;
+            cond.setValue( false );
         },
 
         CCode::iif( cond,
@@ -262,7 +273,7 @@ class NodeServer5 : public Node {
         [ = ]() {
             startTimeout( data3, this, 7 );
             infraConsole.log( "Negative branch 2" );
-            *( ( bool* )&cond.value() ) = true;
+            cond.setValue( true );
         },
         CCode::waitFor( data3 ),
         [ = ]() {
