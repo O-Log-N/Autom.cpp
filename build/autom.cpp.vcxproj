@@ -103,6 +103,7 @@
       <OptimizeReferences>true</OptimizeReferences>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <AdditionalDependencies>..\3rdparty\libuv\Debug\lib\libuv.lib;ws2_32.lib;Psapi.lib;Iphlpapi.lib;Userenv.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <LargeAddressAware>true</LargeAddressAware>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -162,6 +163,7 @@
     <ClCompile Include="..\3rdparty\cppformat\cppformat\format.cc" />
     <ClCompile Include="..\libsrc\aconsole.cpp" />
     <ClCompile Include="..\libsrc\anode.cpp" />
+    <ClCompile Include="..\libsrc\ccode.cpp" />
     <ClCompile Include="..\libsrc\infra\nodecontainer.cpp" />
     <ClCompile Include="..\libsrc\net.cpp" />
     <ClCompile Include="..\libsrc\timer.cpp" />
@@ -173,6 +175,7 @@
     <ClInclude Include="..\include\abuffer.h" />
     <ClInclude Include="..\include\aconsole.h" />
     <ClInclude Include="..\include\anode.h" />
+    <ClInclude Include="..\include\ccode.h" />
     <ClInclude Include="..\include\future.h" />
     <ClInclude Include="..\include\net.h" />
     <ClInclude Include="..\include\timer.h" />
