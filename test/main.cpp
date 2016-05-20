@@ -188,7 +188,7 @@ class AStep {
         return p;
     }
     void debugPrint( const char* prefix ) const {
-        ATRACE0( "{} {} '{}' infra->{} next->{}", prefix, ( void* )this, debugOpCode, ( void* )infraPtr, ( void* )next );
+//        ATRACE0( "{} {} '{}' infra->{} next->{}", prefix, ( void* )this, debugOpCode, ( void* )infraPtr, ( void* )next );
     }
     void debugPrintChain( const char* prefix ) const {
         debugPrint( prefix );
@@ -303,7 +303,6 @@ class CIfStep : public CStep {
                 tmp->debugPrint( "    deleting passive branch:" );
                 delete tmp;
             }
-            ATRACE0( "    done" );
         };
     }
 
@@ -396,29 +395,36 @@ class CCode {
 
   private:
     static CIfStep infraIifImpl( const Future<bool>& b, AStep* c ) {
-        AStep* a = new AStep;
-        a->debugOpCode = AStep::COND;
+        AStep* head = new AStep;
+		head->debugOpCode = AStep::COND;
 
-        auto e = c->endOfChain();
+        auto end = c->endOfChain();
         c->debugPrintChain( "iifImpl" );
 
-        a->fn = [a, c, e, b]( const std::exception * ex ) {
+		head->fn = [head, c, end, b]( const std::exception * ex ) {
             // insert active branch into exec list
             if( b.value() ) {
                 ATRACE0( "====IF POSITIVE====" );
                 // insert active branch in execution chain
-                auto tmp = a->next;
-                a->next = c;
-                e->next = tmp;
-                a->debugPrintChain( "iif new exec chain:" );
+                auto tmp = head->next;
+				head->next = c;
+                end->next = tmp;
+				head->debugPrintChain( "iif new exec chain:" );
             } else {
                 ATRACE0( "====IF NEGATIVE====" );
-                // TODO: delete conditional chain
-                c->debugPrintChain( "iif chain to delete" );
+                AStep* passive = c;
+                while( passive ) {
+                    auto tmp = passive;
+                    passive = passive->next;
+                    if( tmp->infraPtr )
+                        tmp->infraPtr->cleanup();
+                    tmp->debugPrint( "    deleting iif branch:" );
+                    delete tmp;
+                }
             }
         };
         CIfStep s;
-        s.step = a;
+        s.step = head;
         s.branch = c;
         s.condition = &b;
         return s;
@@ -521,7 +527,7 @@ class NodeServer5 : public Node {
 
         CCode::waitFor( data, [ = ]() {
             infraConsole.log( "READ1: file {}---{}", fname.c_str(), "data" );
-            *( ( bool* )&cond.value() ) = true;
+            *( ( bool* )&cond.value() ) = false;
         } ),
 
         CCode::iif( cond,
