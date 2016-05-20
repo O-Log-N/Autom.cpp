@@ -22,12 +22,15 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 
 namespace autom {
 
+using StepFunction = std::function< void( void ) >;
+
+
 class AStep {
   public:
     enum { NONE = ' ', WAIT = 'w', EXEC = 'e', COND = 'c' };
     char debugOpCode;
     InfraFutureBase* infraPtr;
-    std::function< void( const std::exception* ) > fn;
+    FutureFunction fn;
     AStep* next;
 
     AStep() {
@@ -35,7 +38,7 @@ class AStep {
         infraPtr = nullptr;
         next = nullptr;
     }
-    explicit AStep( std::function< void( const std::exception* ) > fn_ ) {
+    explicit AStep( FutureFunction fn_ ) {
         debugOpCode = EXEC;
         infraPtr = nullptr;
         fn = fn_;
@@ -67,7 +70,7 @@ class CStep {
 
     CStep() : step( nullptr ) {}
     CStep( AStep* p ) : step( p ) {}
-    CStep( std::function< void( void ) > fn ) {
+    CStep( StepFunction fn ) {
         step = new AStep( [ = ]( const std::exception* ) {
             fn();
         } );
@@ -76,11 +79,11 @@ class CStep {
     CStep( CStep&& ) = default;
     CStep& operator=( CStep&& ) = default;
 
-    CStep ccatch( std::function< void( const std::exception* ) > fn ) {
+    CStep ccatch( FutureFunction fn ) {
         return *this;
     }
 
-    static CStep chain( std::function< void( void ) > fn ) {
+    static CStep chain( StepFunction fn ) {
         CStep s( fn );
         s.step->debugPrint( "chain 1" );
         return s;
@@ -90,7 +93,7 @@ class CStep {
         return s;
     }
     template< typename... Ts >
-    static CStep chain( std::function< void( void ) > fn, Ts&&... Vals ) {
+    static CStep chain( StepFunction fn, Ts&&... Vals ) {
         CStep s( fn );
         s.step->next = chain( Vals... ).step;
         s.step->debugPrint( "chain 2" );
@@ -111,7 +114,7 @@ class CIfStep : public CStep {
 
     CIfStep() : branch( nullptr ), condition( nullptr ) {}
     CIfStep( AStep* p ) : branch( nullptr ), condition( nullptr ), CStep( p ) {}
-    CIfStep( std::function< void( void ) > fn ) : condition( nullptr ), branch( nullptr ), CStep( fn ) {}
+    CIfStep( StepFunction fn ) : condition( nullptr ), branch( nullptr ), CStep( fn ) {}
     CIfStep( const CIfStep& ) = default;
     CIfStep( CIfStep&& ) = default;
     CIfStep& operator=( CIfStep&& ) = default;
@@ -120,7 +123,7 @@ class CIfStep : public CStep {
     void infraEelseImpl( CIfStep* first, AStep* second );
 
   public:
-    CStep eelse( std::function< void( void ) > fn ) {
+    CStep eelse( StepFunction fn ) {
         CStep s( fn );
         infraEelseImpl( this, s.step );
         return *this;
@@ -131,7 +134,7 @@ class CIfStep : public CStep {
         return *this;
     }
     template< typename... Ts >
-    CStep eelse( std::function< void( void ) > fn, Ts... Vals ) {
+    CStep eelse( StepFunction fn, Ts... Vals ) {
         CStep s( fn );
         s.step->next = chain( Vals... ).step;
         infraEelseImpl( this, s.step );
@@ -159,7 +162,7 @@ class CCode {
         s.step->debugPrint( "ttry 1" );
         return s;
     }
-    static CStep ttry( std::function< void( void ) > fn ) {
+    static CStep ttry( StepFunction fn ) {
         CStep s( fn );
         s.step->debugPrint( "ttry 2" );
         return s;
@@ -171,20 +174,20 @@ class CCode {
         return s;
     }
     template< typename... Ts >
-    static CStep ttry( std::function< void( void ) > fn, Ts&&... Vals ) {
+    static CStep ttry( StepFunction fn, Ts&&... Vals ) {
         CStep s = ttry( fn );
         s.step->next = ttry( Vals... ).step;
         s.step->debugPrint( "ttry 4" );
         return s;
     }
-    static CStep waitFor( const Future<Timer>& future );
+    static CStep waitFor( const FutureBase& future );
 
   private:
     static CIfStep infraIifImpl( const Future<bool>& b, AStep* c );
 
   public:
     template< typename... Ts >
-    static CIfStep iif( const Future<bool>& b, std::function< void( void ) > fn, Ts&&... Vals ) {
+    static CIfStep iif( const Future<bool>& b, StepFunction fn, Ts&&... Vals ) {
         CStep s( fn );
         s.step->next = CStep::chain( Vals... ).step;
         s.step->debugPrint( "iif 1" );

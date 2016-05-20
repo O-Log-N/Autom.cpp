@@ -62,8 +62,14 @@ class InfraFuture : public InfraFutureBase {
     }
 };
 
+class FutureBase {
+  public:
+    virtual InfraFutureBase* infraGetPtr() const = 0;
+    virtual void then( const FutureFunction& ) const = 0;
+};
+
 template< typename T >
-class Future {
+class Future : public FutureBase {
     FutureId futureId;
     Node* node;
     InfraFuture< T >* infraPtr;
@@ -75,11 +81,11 @@ class Future {
     Future( Future&& );
     Future& operator=( const Future& );
     ~Future();
-    void then( const FutureFunction& ) const;
+    void then( const FutureFunction& ) const override;
     FutureId infraGetId() const {
         return futureId;
     }
-    InfraFutureBase* infraGetPtr() const {
+    InfraFutureBase* infraGetPtr() const override {
         return infraPtr;
     }
     void infraAssign( const Future& other ) const {

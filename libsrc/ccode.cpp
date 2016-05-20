@@ -62,7 +62,7 @@ void CIfStep::infraEelseImpl( CIfStep* first, AStep* second ) {
     };
 }
 
-CStep CCode::waitFor( const Future<Timer>& future ) {
+CStep CCode::waitFor( const FutureBase& future ) {
     AStep* a = new AStep;
     a->debugOpCode = AStep::WAIT;
     a->infraPtr = future.infraGetPtr();
