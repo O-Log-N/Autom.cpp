@@ -254,12 +254,6 @@ class CIfStep : public CStep {
     CIfStep& operator=( CIfStep&& ) = default;
 
   private:
-    CStep infraEelse( CStep s ) {
-        return s;
-    }
-    CStep infraEelse( std::function< void( void ) > fn ) {
-        return CStep( fn );
-    }
     void infraEelseImpl( CIfStep* first, AStep* second ) {
         AASSERT4( first );
         AASSERT4( first->step );
@@ -270,13 +264,13 @@ class CIfStep : public CStep {
         AASSERT4( second );
 
         AStep* f = first->branch;
-        AStep* main = first->step;
+        AStep* head = first->step;
         auto e1 = f->endOfChain();
         auto e2 = second->endOfChain();
         const Future<bool>& b = *first->condition;
         f->debugPrintChain( "====IFELSE FIRST BRANCH" );
         second->debugPrintChain( "====IFELSE SCOND BRANCH" );
-        first->step->fn = [b, f, main, second, e1, e2]( const std::exception * ex ) {
+        first->step->fn = [b, f, head, second, e1, e2]( const std::exception * ex ) {
             // insert active branch into exec list
             AStep* active, *passive, *end;
             if( b.value() ) {
@@ -291,8 +285,8 @@ class CIfStep : public CStep {
                 end = e2;
             }
             // insert active branch in execution chain
-            auto tmp = main->next;
-            main->next = active;
+            auto tmp = head->next;
+            head->next = active;
             end->next = tmp;
             // delete passive branch
             while( passive ) {
@@ -320,14 +314,14 @@ class CIfStep : public CStep {
     template< typename... Ts >
     CStep eelse( std::function< void( void ) > fn, Ts... Vals ) {
         CStep s( fn );
-        s.step->next = infraEelse( Vals... ).step;
+        s.step->next = chain( Vals... ).step;
         infraEelseImpl( this, s.step );
         return *this;
     }
     template< typename... Ts >
     CStep eelse( CStep s, Ts... Vals ) {
         AASSERT4( step->debugOpCode == AStep::COND );
-        s.step->next = infraEelse( Vals... ).step;
+        s.step->next = chain( Vals... ).step;
         infraEelseImpl( this, s.step );
         return *this;
     }
@@ -379,14 +373,13 @@ class CCode {
         s.step->debugPrint( "ttry 4" );
         return s;
     }
-    static CStep waitFor( const Future<Timer>& future, std::function< void( void ) > fn ) {
+    static CStep waitFor( const Future<Timer>& future ) {
         AStep* a = new AStep;
         a->debugOpCode = AStep::WAIT;
         a->infraPtr = future.infraGetPtr();
         CStep s;
         s.step = a;
-        future.then( [fn, a]( const std::exception* ) {
-            fn();
+        future.then( [ a ]( const std::exception* ) {
             exec( a->next );
         } );
         s.step->debugPrintChain( "waitFor" );
@@ -395,21 +388,22 @@ class CCode {
 
   private:
     static CIfStep infraIifImpl( const Future<bool>& b, AStep* c ) {
+        AASSERT4( c );
         AStep* head = new AStep;
-		head->debugOpCode = AStep::COND;
+        head->debugOpCode = AStep::COND;
 
         auto end = c->endOfChain();
         c->debugPrintChain( "iifImpl" );
 
-		head->fn = [head, c, end, b]( const std::exception * ex ) {
+        head->fn = [head, c, end, b]( const std::exception * ex ) {
             // insert active branch into exec list
             if( b.value() ) {
                 ATRACE0( "====IF POSITIVE====" );
                 // insert active branch in execution chain
                 auto tmp = head->next;
-				head->next = c;
+                head->next = c;
                 end->next = tmp;
-				head->debugPrintChain( "iif new exec chain:" );
+                head->debugPrintChain( "iif new exec chain:" );
             } else {
                 ATRACE0( "====IF NEGATIVE====" );
                 AStep* passive = c;
@@ -456,16 +450,19 @@ class NodeServer3 : public Node {
             startTimeout( data, this, 5 );
             startTimeout( data3, this, 15 );
         },
-        CCode::waitFor( data, [ = ]() {
+        CCode::waitFor( data ),
+        [ = ]() {
             infraConsole.log( "READ1: file {}---{}", fname.c_str(), "data" );
             startTimeout( data2, this, 6 );
-        } ),
-        CCode::waitFor( data2, [ = ]() {
+        },
+        CCode::waitFor( data2 ),
+        [ = ]() {
             infraConsole.log( "READ2: {} : {}", "data", "data2" );
-        } ),
-        CCode::waitFor( data3, [ = ]() {
+        },
+        CCode::waitFor( data3 ),
+        [ = ]() {
             infraConsole.log( "READ3: {} : {}", "data2", "data3" );
-        } ),
+        },
         [ = ]() {
             infraConsole.log( "Last step" );
         }
@@ -485,25 +482,28 @@ class NodeServer4 : public Node {
         [ = ]() {
             startTimeout( data, this, 5 );
         },
-        CCode::waitFor( data, [ = ]() {
+        CCode::waitFor( data ),
+        [ = ]() {
             infraConsole.log( "READ1: file {}---{}", fname.c_str(), "data" );
             *( ( bool* )&cond.value() ) = false;
-        } ),
+        },
         CCode::iif( cond,
         [ = ]() {
             startTimeout( data2, this, 6 );
             infraConsole.log( "Positive branch" );
         },
-        CCode::waitFor( data2, [ = ]() {
+        CCode::waitFor( data2 ),
+        [ = ]() {
             infraConsole.log( "READ2: {} : {}", "data", "data2" );
-        } ) ).eelse(
+        } ).eelse(
         [ = ]() {
             startTimeout( data3, this, 7 );
             infraConsole.log( "Negative branch" );
         },
-        CCode::waitFor( data3, [ = ]() {
+        CCode::waitFor( data3 ),
+        [ = ]() {
             infraConsole.log( "READ3: {} : {}", "data", "data3" );
-        } ) ),
+        } ),
         [ = ]() {
             infraConsole.log( "Invariant after iif" );
         }
@@ -525,43 +525,47 @@ class NodeServer5 : public Node {
             startTimeout( data, this, 5 );
         },
 
-        CCode::waitFor( data, [ = ]() {
+        CCode::waitFor( data ),
+        [ = ]() {
             infraConsole.log( "READ1: file {}---{}", fname.c_str(), "data" );
             *( ( bool* )&cond.value() ) = false;
-        } ),
+        },
 
         CCode::iif( cond,
         [ = ]() {
             startTimeout( data2, this, 6 );
             infraConsole.log( "Positive branch 1" );
         },
-        CCode::waitFor( data2, [ = ]() {
+        CCode::waitFor( data2 ),
+        [ = ]() {
             infraConsole.log( "READ2: {} : {}", "data", "data2" );
-        } ) ).eelse(
+        } ).eelse(
         [ = ]() {
             startTimeout( data3, this, 7 );
             infraConsole.log( "Negative branch 2" );
             *( ( bool* )&cond.value() ) = true;
         },
-        CCode::waitFor( data3, [ = ]() {
+        CCode::waitFor( data3 ),
+        [ = ]() {
             infraConsole.log( "READ3" );
-        } ) ),
+        } ),
 
         CCode::iif( cond,
         [ = ]() {
             startTimeout( data4, this, 6 );
             infraConsole.log( "Positive branch 3" );
         },
-        CCode::waitFor( data4, [ = ]() {
+        CCode::waitFor( data4 ), [ = ]() {
             infraConsole.log( "READ4" );
-        } ) ).eelse(
+        } ).eelse(
         [ = ]() {
             startTimeout( data5, this, 7 );
             infraConsole.log( "Negative branch" );
         },
-        CCode::waitFor( data5, [ = ]() {
+        CCode::waitFor( data5 ),
+        [ = ]() {
             infraConsole.log( "READ5" );
-        } ) )
+        } )
 
         ).ccatch( [ = ]( const std::exception * x ) {
             infraConsole.log( "oopsies: {}", x->what() );
