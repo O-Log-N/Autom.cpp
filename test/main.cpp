@@ -160,8 +160,8 @@ class NodeServer2 : public Node {
 
 class AStep {
   public:
-    enum { NONE = 0, WAIT, EXEC, COND };
-    int debugOpCode;
+    enum { NONE = ' ', WAIT = 'w', EXEC = 'e', COND = 'c' };
+    char debugOpCode;
     InfraFutureBase* infraPtr;
     std::function< void( const std::exception* ) > fn;
     AStep* next;
@@ -187,21 +187,23 @@ class AStep {
             p = p->next;
         return p;
     }
-    void debugPrint() const {
-        ATRACE0( "{} opCode {} {}", ( void* )this, debugOpCode, ( void* )infraPtr );
+    void debugPrint( const char* prefix ) const {
+        ATRACE0( "{} {} '{}' infra->{} next->{}", prefix, ( void* )this, debugOpCode, ( void* )infraPtr, ( void* )next );
+    }
+    void debugPrintChain( const char* prefix ) const {
+        debugPrint( prefix );
         if( next )
-            next->debugPrint();
+            next->debugPrintChain( "" );
     }
 };
 
 class CStep {
   public:
     AStep* step;
-    const Future<bool>* condition;
 
-    CStep() : step( nullptr ), condition( nullptr ) {}
-    CStep( AStep* p ) : step( p ), condition( nullptr ) {}
-    CStep( std::function< void( void ) > fn ) : condition( nullptr ) {
+    CStep() : step( nullptr ) {}
+    CStep( AStep* p ) : step( p ) {}
+    CStep( std::function< void( void ) > fn ) {
         step = new AStep( [ = ]( const std::exception* ) {
             fn();
         } );
@@ -214,6 +216,43 @@ class CStep {
         return *this;
     }
 
+    static CStep chain( std::function< void( void ) > fn ) {
+        CStep s( fn );
+        s.step->debugPrint( "chain 1" );
+        return s;
+    }
+    static CStep chain( CStep s ) {
+        s.step->debugPrint( "chain 2" );
+        return s;
+    }
+    template< typename... Ts >
+    static CStep chain( std::function< void( void ) > fn, Ts&&... Vals ) {
+        CStep s( fn );
+        s.step->next = chain( Vals... ).step;
+        s.step->debugPrint( "chain 2" );
+        return s;
+    }
+    template< typename... Ts >
+    static CStep chain( CStep s, Ts&&... Vals ) {
+        AASSERT4( nullptr == s.step->next );
+        s.step->next = chain( Vals... ).step;
+        return s;
+    }
+
+};
+
+class CIfStep : public CStep {
+  public:
+    AStep* branch;
+    const Future<bool>* condition;
+
+    CIfStep() : branch( nullptr ), condition( nullptr ) {}
+    CIfStep( AStep* p ) : branch( nullptr ), condition( nullptr ), CStep( p ) {}
+    CIfStep( std::function< void( void ) > fn ) : condition( nullptr ), branch( nullptr ), CStep( fn ) {}
+    CIfStep( const CIfStep& ) = default;
+    CIfStep( CIfStep&& ) = default;
+    CIfStep& operator=( CIfStep&& ) = default;
+
   private:
     CStep infraEelse( CStep s ) {
         return s;
@@ -221,20 +260,23 @@ class CStep {
     CStep infraEelse( std::function< void( void ) > fn ) {
         return CStep( fn );
     }
-    void infraEelseImpl( CStep* first, AStep* second ) {
+    void infraEelseImpl( CIfStep* first, AStep* second ) {
         AASSERT4( first );
         AASSERT4( first->step );
-		AASSERT4( first->step->next );
-		AASSERT4( first->step->debugOpCode == AStep::COND );
+        AASSERT4( !first->step->next );
+        AASSERT4( first->step->debugOpCode == AStep::COND );
         AASSERT4( first->condition );
+        AASSERT4( first->branch );
         AASSERT4( second );
 
-        AStep* f = first->step->next;
+        AStep* f = first->branch;
+        AStep* main = first->step;
         auto e1 = f->endOfChain();
         auto e2 = second->endOfChain();
         const Future<bool>& b = *first->condition;
-        first->condition = nullptr;
-        f->fn = [ b, f, second, e1, e2 ]( const std::exception * ex ) {
+        f->debugPrintChain( "====IFELSE FIRST BRANCH" );
+        second->debugPrintChain( "====IFELSE SCOND BRANCH" );
+        first->step->fn = [b, f, main, second, e1, e2]( const std::exception * ex ) {
             // insert active branch into exec list
             AStep* active, *passive, *end;
             if( b.value() ) {
@@ -249,8 +291,8 @@ class CStep {
                 end = e2;
             }
             // insert active branch in execution chain
-            auto tmp = f->next;
-            f->next = active;
+            auto tmp = main->next;
+            main->next = active;
             end->next = tmp;
             // delete passive branch
             while( passive ) {
@@ -258,15 +300,26 @@ class CStep {
                 passive = passive->next;
                 if( tmp->infraPtr )
                     tmp->infraPtr->cleanup();
+                tmp->debugPrint( "    deleting passive branch:" );
                 delete tmp;
             }
+            ATRACE0( "    done" );
         };
     }
 
   public:
+    CStep eelse( std::function< void( void ) > fn ) {
+        CStep s( fn );
+        infraEelseImpl( this, s.step );
+        return *this;
+    }
+    CStep eelse( CStep s ) {
+        AASSERT4( step->debugOpCode == AStep::COND );
+        infraEelseImpl( this, s.step );
+        return *this;
+    }
     template< typename... Ts >
     CStep eelse( std::function< void( void ) > fn, Ts... Vals ) {
-        AASSERT4( step->debugOpCode == AStep::COND );
         CStep s( fn );
         s.step->next = infraEelse( Vals... ).step;
         infraEelseImpl( this, s.step );
@@ -296,56 +349,35 @@ class CCode {
 
             auto tmp = s;
             s = s->next;
+            tmp->debugPrint( "    deleting main" );
             delete tmp;
         }
     }
-    static void debugPrint( const AStep* s ) {
-        if( !s )
-            return;
-        ATRACE0( "{} OpCode {} id {}", ( void* )s, s->debugOpCode, ( void* )s->infraPtr );
-        debugPrint( s->next );
-    }
     CCode( const CStep& s ) {
-        debugPrint( s.step );
+        s.step->debugPrintChain( "main\n" );
         exec( s.step );
     }
 
-  private:
-    static CStep chain( std::function< void( void ) > fn ) {
-        return CStep( fn );
-    }
-    static CStep chain( CStep s ) {
-        return s;
-    }
-    template< typename... Ts >
-    static CStep chain( std::function< void( void ) > fn, Ts&&... Vals ) {
-        CStep s( fn );
-        s.step->next = chain( Vals... ).step;
-        return s;
-    }
-    template< typename... Ts >
-    static CStep chain( CStep s, Ts&&... Vals ) {
-        AASSERT4( nullptr == s.step->next );
-        s.step->next = chain( Vals... ).step;
-        return s;
-    }
-
-  public:
     static CStep ttry( CStep s ) {
+        s.step->debugPrint( "ttry 1" );
         return s;
     }
     static CStep ttry( std::function< void( void ) > fn ) {
-        return CStep( fn );
+        CStep s( fn );
+        s.step->debugPrint( "ttry 2" );
+        return s;
     }
     template< typename... Ts >
     static CStep ttry( CStep s, Ts&&... Vals ) {
         s.step->next = ttry( Vals... ).step;
+        s.step->debugPrint( "ttry 3" );
         return s;
     }
     template< typename... Ts >
     static CStep ttry( std::function< void( void ) > fn, Ts&&... Vals ) {
         CStep s = ttry( fn );
         s.step->next = ttry( Vals... ).step;
+        s.step->debugPrint( "ttry 4" );
         return s;
     }
     static CStep waitFor( const Future<Timer>& future, std::function< void( void ) > fn ) {
@@ -358,86 +390,54 @@ class CCode {
             fn();
             exec( a->next );
         } );
+        s.step->debugPrintChain( "waitFor" );
         return s;
     }
 
   private:
-    static CStep infraIifImpl( const Future<bool>& b, AStep* c ) {
+    static CIfStep infraIifImpl( const Future<bool>& b, AStep* c ) {
         AStep* a = new AStep;
-        a->next = c;
         a->debugOpCode = AStep::COND;
+
         auto e = c->endOfChain();
+        c->debugPrintChain( "iifImpl" );
+
         a->fn = [a, c, e, b]( const std::exception * ex ) {
             // insert active branch into exec list
-            AStep* active, *end;
             if( b.value() ) {
                 ATRACE0( "====IF POSITIVE====" );
-                active = c;
-                end = e;
+                // insert active branch in execution chain
+                auto tmp = a->next;
+                a->next = c;
+                e->next = tmp;
+                a->debugPrintChain( "iif new exec chain:" );
             } else {
                 ATRACE0( "====IF NEGATIVE====" );
-                return;
+                // TODO: delete conditional chain
+                c->debugPrintChain( "iif chain to delete" );
             }
-            // insert active branch in execution chain
-            auto tmp = a->next;
-            a->next = active;
-            end->next = tmp;
         };
-        CStep s;
+        CIfStep s;
         s.step = a;
+        s.branch = c;
         s.condition = &b;
         return s;
     }
 
   public:
     template< typename... Ts >
-    static CStep iif( const Future<bool>& b, std::function< void( void ) > fn, Ts&&... Vals ) {
+    static CIfStep iif( const Future<bool>& b, std::function< void( void ) > fn, Ts&&... Vals ) {
         CStep s( fn );
-        s.step->next = chain( Vals... ).step;
+        s.step->next = CStep::chain( Vals... ).step;
+        s.step->debugPrint( "iif 1" );
         return infraIifImpl( b, s.step );
     }
     template< typename... Ts >
-    static CStep iif( const Future<bool>& b, CStep s, Ts&&... Vals ) {
-        s.step->next = chain( Vals... ).step;
+    static CIfStep iif( const Future<bool>& b, CStep s, Ts&&... Vals ) {
+        s.step->next = CStep::chain( Vals... ).step;
+        s.step->debugPrint( "iif 2" );
         return infraIifImpl( b, s.step );
     }
-    /*
-    		static CStep iif( const Future<bool>& b, CStep s1, CStep s2 ) {
-            AASSERT4( s1.step );
-            AASSERT4( s2.step );
-            CStep s;
-            s.step = new AStep;
-            s.step->debugOpCode = AStep::COND;
-            auto e1 = s1.step->endOfChain();
-            auto e2 = s2.step->endOfChain();
-            s.step->fn = [s, s1, s2, e1, e2, b]( const std::exception * ex ) {
-                // insert active branch into exec list
-                AStep* active, *passive, *end;
-                if( b.value() ) {
-                    active = s1.step;
-                    passive = s2.step;
-                    end = e1;
-                } else {
-                    active = s2.step;
-                    passive = s1.step;
-                    end = e2;
-                }
-                // insert active branch in execution chain
-                auto tmp = s.step->next;
-                s.step->next = active;
-                end->next = tmp;
-                // delete passive branch
-    			while( passive ) {
-    				tmp = passive;
-    				passive = passive->next;
-    				if( tmp->infraPtr )
-    					tmp->infraPtr->cleanup();
-    				delete tmp;
-    			}
-            };
-            return s;
-        }
-    */
 };
 
 class NodeServer3 : public Node {
@@ -514,9 +514,11 @@ class NodeServer5 : public Node {
         Future<Timer> data( this ), data2( this ), data3( this ), data4( this ), data5( this );
         Future<bool> cond( this );
         CCode code( CCode::ttry(
+
         [ = ]() {
             startTimeout( data, this, 5 );
         },
+
         CCode::waitFor( data, [ = ]() {
             infraConsole.log( "READ1: file {}---{}", fname.c_str(), "data" );
             *( ( bool* )&cond.value() ) = true;
@@ -538,6 +540,7 @@ class NodeServer5 : public Node {
         CCode::waitFor( data3, [ = ]() {
             infraConsole.log( "READ3" );
         } ) ),
+
         CCode::iif( cond,
         [ = ]() {
             startTimeout( data4, this, 6 );
@@ -553,6 +556,7 @@ class NodeServer5 : public Node {
         CCode::waitFor( data5, [ = ]() {
             infraConsole.log( "READ5" );
         } ) )
+
         ).ccatch( [ = ]( const std::exception * x ) {
             infraConsole.log( "oopsies: {}", x->what() );
         } ) );//ccatch+code
