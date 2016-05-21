@@ -69,8 +69,11 @@ CStep CCode::waitFor( const FutureBase& future ) {
     CStep s;
     s.step = a;
     future.then( [a]( const std::exception* ) {
-        if( a->next )
-            exec( a->next );
+		if( a->next ) {
+			auto next = a->next;
+			delete a;
+			exec( next );
+		}
     } );
     s.step->debugDumpChain( "waitFor" );
     return s;
