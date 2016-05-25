@@ -70,7 +70,8 @@ CStep CCode::waitFor( const FutureBase& future ) {
     s.step = a;
     future.then( [a]( const std::exception* ) {
         AASSERT4( a->infraPtr->isDataReady() );
-        exec( a );
+        if( a->infraPtr->isStepReady() )
+            exec( a );
     } );
     s.step->debugDumpChain( "waitFor" );
     return s;
@@ -120,6 +121,7 @@ void CCode::exec( const AStep* s ) {
             AASSERT4( s->infraPtr->refCount > 0 );
             if( s->infraPtr->isDataReady() ) {
                 INFRATRACE0( "Processing event {} ...", ( void* )s->infraPtr );
+                s->infraPtr->cleanup();
             } else {
                 INFRATRACE0( "Waiting event {} ...", ( void* )s->infraPtr );
                 s->infraPtr->setStepReady();

@@ -24,11 +24,8 @@ void Node::infraProcessTimer( const NodeQTimer& item ) {
     auto it = futureMap.find( item.id );
     if( it != futureMap.end() ) {
         it->second->setDataReady();
-        if( it->second->isStepReady() ) {
-            it->second->fn( nullptr );
-            it->second->cleanup();
-            futureCleanup();
-        }
+        it->second->fn( nullptr );
+        futureCleanup();
     }
 }
 

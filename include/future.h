@@ -58,6 +58,7 @@ class InfraFutureBase {
         //    to our InfraFutures, which will prevent futureCleanup() from
         //    destroying InfraFuture - EVER
         refCount--;
+        INFRATRACE0( "    cleanup {} cnt {}", ( void* )this, refCount );
     }
     virtual void debugDump() const = 0;
 };

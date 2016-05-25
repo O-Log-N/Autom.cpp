@@ -79,7 +79,7 @@ class CStep {
     CStep( CStep&& ) = default;
     CStep& operator=( CStep&& ) = default;
 
-    CStep ccatch( FutureFunction fn ) {
+    CStep ccatch( std::function< void( const std::exception& ) > ) {
         return *this;
     }
 
@@ -186,17 +186,26 @@ class CCode {
     static CIfStep infraIifImpl( const Future<bool>& b, AStep* c );
 
   public:
-    template< typename... Ts >
+    static CIfStep iif( const Future<bool>& b, StepFunction fn ) {
+        CStep s( fn );
+        s.step->debugDump( "iif 0" );
+        return infraIifImpl( b, s.step );
+    }
+	static CIfStep iif( const Future<bool>& b, CStep s ) {
+		s.step->debugDump( "iif 1" );
+		return infraIifImpl( b, s.step );
+	}
+	template< typename... Ts >
     static CIfStep iif( const Future<bool>& b, StepFunction fn, Ts&&... Vals ) {
         CStep s( fn );
         s.step->next = CStep::chain( Vals... ).step;
-        s.step->debugDump( "iif 1" );
+        s.step->debugDump( "iif 2" );
         return infraIifImpl( b, s.step );
     }
     template< typename... Ts >
     static CIfStep iif( const Future<bool>& b, CStep s, Ts&&... Vals ) {
         s.step->next = CStep::chain( Vals... ).step;
-        s.step->debugDump( "iif 2" );
+        s.step->debugDump( "iif 3" );
         return infraIifImpl( b, s.step );
     }
 };

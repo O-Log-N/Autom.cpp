@@ -196,8 +196,8 @@ class NodeServer3 : public Node {
         [ = ]() {
             infraConsole.log( "Last step" );
         }
-        ).ccatch( [ = ]( const std::exception * x ) {
-            infraConsole.log( "oopsies: {}", x->what() );
+        ).ccatch( [ = ]( const std::exception & x ) {
+            infraConsole.log( "oopsies: {}", x.what() );
         } ) );//ccatch+code
     }
 };
@@ -237,8 +237,8 @@ class NodeServer4 : public Node {
         [ = ]() {
             infraConsole.log( "Invariant after iif" );
         }
-        ).ccatch( [ = ]( const std::exception * x ) {
-            infraConsole.log( "oopsies: {}", x->what() );
+        ).ccatch( [ = ]( const std::exception & x ) {
+            infraConsole.log( "oopsies: {}", x.what() );
         } ) );//ccatch+code
     }
 };
@@ -258,7 +258,7 @@ class NodeServer5 : public Node {
         CCode::waitFor( data ),
         [ = ]() {
             infraConsole.log( "READ1: file {}---{}", fname.c_str(), "data" );
-            cond.setValue( false );
+            cond.setValue( true );
         },
 
         CCode::iif( cond,
@@ -269,7 +269,14 @@ class NodeServer5 : public Node {
         CCode::waitFor( data2 ),
         [ = ]() {
             infraConsole.log( "READ2: {} : {}", "data", "data2" );
-        } ).eelse(
+            cond.setValue( false );
+        },
+        CCode::iif( cond, [ = ]() {
+            infraConsole.log( "nested iif +" );
+        } ).eelse( [ = ]() {
+            infraConsole.log( "nested iif -" );
+        } )
+                  ).eelse(
         [ = ]() {
             startTimeout( data3, this, 7 );
             infraConsole.log( "Negative branch 2" );
@@ -297,8 +304,8 @@ class NodeServer5 : public Node {
             infraConsole.log( "READ5" );
         } )
 
-        ).ccatch( [ = ]( const std::exception * x ) {
-            infraConsole.log( "oopsies: {}", x->what() );
+        ).ccatch( [ = ]( const std::exception & x ) {
+            infraConsole.log( "oopsies: {}", x.what() );
         } ) );//ccatch+code
     }
 };
