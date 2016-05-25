@@ -66,13 +66,13 @@ CStep CCode::waitFor( const FutureBase& future ) {
     AStep* a = new AStep;
     a->debugOpCode = AStep::WAIT;
     a->infraPtr = future.infraGetPtr();
-    CStep s;
-    s.step = a;
-    future.then( [a]( const std::exception* ) {
+    future.then( [a]( const std::exception * ex ) {
         AASSERT4( a->infraPtr->isDataReady() );
         if( a->infraPtr->isStepReady() )
             exec( a );
     } );
+    CStep s;
+    s.step = a;
     s.step->debugDumpChain( "waitFor" );
     return s;
 }
@@ -129,7 +129,11 @@ void CCode::exec( const AStep* s ) {
             }
         } else {
             AASSERT4( ( AStep::EXEC == s->debugOpCode ) || ( AStep::COND == s->debugOpCode ) );
-            s->fn( nullptr );
+            try {
+                s->fn( nullptr );
+            } catch( const std::exception& x ) {
+                s->exHandler( x );
+            }
         }
 
         auto tmp = s;

@@ -23,6 +23,7 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 namespace autom {
 
 using StepFunction = std::function< void( void ) >;
+using ExHandlerFunction = std::function< void( const std::exception& ) >;
 
 
 class AStep {
@@ -31,6 +32,7 @@ class AStep {
     char debugOpCode;
     InfraFutureBase* infraPtr;
     FutureFunction fn;
+    ExHandlerFunction exHandler;
     AStep* next;
 
     AStep() {
@@ -79,7 +81,9 @@ class CStep {
     CStep( CStep&& ) = default;
     CStep& operator=( CStep&& ) = default;
 
-    CStep ccatch( std::function< void( const std::exception& ) > ) {
+    CStep ccatch( ExHandlerFunction handler ) {
+        for( auto it = this->step; it; it = it->next )
+            it->exHandler = handler;
         return *this;
     }
 
@@ -191,11 +195,11 @@ class CCode {
         s.step->debugDump( "iif 0" );
         return infraIifImpl( b, s.step );
     }
-	static CIfStep iif( const Future<bool>& b, CStep s ) {
-		s.step->debugDump( "iif 1" );
-		return infraIifImpl( b, s.step );
-	}
-	template< typename... Ts >
+    static CIfStep iif( const Future<bool>& b, CStep s ) {
+        s.step->debugDump( "iif 1" );
+        return infraIifImpl( b, s.step );
+    }
+    template< typename... Ts >
     static CIfStep iif( const Future<bool>& b, StepFunction fn, Ts&&... Vals ) {
         CStep s( fn );
         s.step->next = CStep::chain( Vals... ).step;
