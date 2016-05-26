@@ -29,7 +29,7 @@ void InfraNodeContainer::removeNode( Node* node ) {
 }
 
 void InfraNodeContainer::debugDump( int line ) const {
-    INFRATRACE0( "line {} Nodes: {} ----------", line, nodes.size() );
+    INFRATRACE4( "line {} Nodes: {} ----------", line, nodes.size() );
     for( auto it : nodes ) {
         it->debugDump();
     }

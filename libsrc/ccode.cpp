@@ -36,12 +36,12 @@ void CIfStep::infraEelseImpl( AStep* second ) {
         // insert active branch into exec list
         AStep* active, *passive, *end;
         if( b.value() ) {
-            INFRATRACE0( "====IFELSE POSITIVE====" );
+            INFRATRACE4( "====IFELSE POSITIVE====" );
             active = f;
             passive = second;
             end = e1;
         } else {
-            INFRATRACE0( "====IFELSE NEGATIVE====" );
+            INFRATRACE4( "====IFELSE NEGATIVE====" );
             active = second;
             passive = f;
             end = e2;
@@ -68,7 +68,7 @@ CStep CCode::waitFor( const FutureBase& future ) {
     a->infraPtr = future.infraGetPtr();
     future.then( [a]( const std::exception * ex ) {
         AASSERT4( a->infraPtr->isDataReady() );
-        if( a->infraPtr->isStepReady() )
+        if( a->isStepReady() )
             exec( a );
     } );
     CStep s;
@@ -88,14 +88,14 @@ CIfStep CCode::infraIifImpl( const Future<bool>& b, AStep* c ) {
     head->fn = [head, c, end, b]( const std::exception * ex ) {
         // insert active branch into exec list
         if( b.value() ) {
-            INFRATRACE0( "====IF POSITIVE====" );
+            INFRATRACE4( "====IF POSITIVE====" );
             // insert active branch in execution chain
             auto tmp = head->next;
             head->next = c;
             end->next = tmp;
             head->debugDumpChain( "iif new exec chain:" );
         } else {
-            INFRATRACE0( "====IF NEGATIVE====" );
+            INFRATRACE4( "====IF NEGATIVE====" );
             AStep* passive = c;
             while( passive ) {
                 auto tmp = passive;
@@ -114,17 +114,17 @@ CIfStep CCode::infraIifImpl( const Future<bool>& b, AStep* c ) {
     return s;
 }
 
-void CCode::exec( const AStep* s ) {
+void CCode::exec( AStep* s ) {
     while( s ) {
         if( s->infraPtr ) {
             AASSERT4( AStep::WAIT == s->debugOpCode );
             AASSERT4( s->infraPtr->refCount > 0 );
             if( s->infraPtr->isDataReady() ) {
-                INFRATRACE0( "Processing event {} ...", ( void* )s->infraPtr );
+                INFRATRACE4( "Processing event {} ...", ( void* )s->infraPtr );
                 s->infraPtr->cleanup();
             } else {
-                INFRATRACE0( "Waiting event {} ...", ( void* )s->infraPtr );
-                s->infraPtr->setStepReady();
+                INFRATRACE4( "Waiting event {} ...", ( void* )s->infraPtr );
+                s->setStepReady();
                 return;
             }
         } else {

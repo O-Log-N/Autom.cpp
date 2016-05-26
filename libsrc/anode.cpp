@@ -108,9 +108,9 @@ bool Node::isEmpty() const {
 }
 
 void Node::debugDump() const {
-    INFRATRACE0( "futures {}", futureMap.size() );
+    INFRATRACE4( "futures {}", futureMap.size() );
     for( auto& it : futureMap ) {
-        INFRATRACE0( "  #{}", it.first );
+        INFRATRACE4( "  #{}", it.first );
         it.second->debugDump();
     }
 }

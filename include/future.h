@@ -27,26 +27,19 @@ namespace autom {
 
 class InfraFutureBase {
     bool dataReady;
-    bool stepReady;
 
   public:
     FutureFunction fn;
     int refCount;
     bool multi;
 
-    InfraFutureBase() : dataReady( false ), stepReady( false ) {}
+    InfraFutureBase() : dataReady( false ) {}
     virtual ~InfraFutureBase() {}
     void setDataReady() {
         dataReady = true;
     }
     bool isDataReady() const {
         return dataReady;
-    }
-    void setStepReady() {
-        stepReady = true;
-    }
-    bool isStepReady() const {
-        return stepReady;
     }
     void cleanup() {
         if( multi )
@@ -58,7 +51,7 @@ class InfraFutureBase {
         //    to our InfraFutures, which will prevent futureCleanup() from
         //    destroying InfraFuture - EVER
         refCount--;
-        INFRATRACE0( "    cleanup {} cnt {}", ( void* )this, refCount );
+        INFRATRACE4( "    cleanup {} cnt {}", ( void* )this, refCount );
     }
     virtual void debugDump() const = 0;
 };
@@ -69,7 +62,7 @@ class InfraFuture : public InfraFutureBase {
 
   public:
     const T& getResult() const {
-        AASSERT0( isDataReady() );
+        AASSERT4( isDataReady() );
         return result;
     }
     T& infraGetData() {
@@ -77,7 +70,7 @@ class InfraFuture : public InfraFutureBase {
     }
 
     void debugDump() const override {
-        INFRATRACE0( "    refcnt {} {}", refCount, multi );
+        INFRATRACE4( "    refcnt {} {}", refCount, multi );
     }
 };
 

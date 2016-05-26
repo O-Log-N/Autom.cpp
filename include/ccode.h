@@ -27,6 +27,8 @@ using ExHandlerFunction = std::function< void( const std::exception& ) >;
 
 
 class AStep {
+    bool stepReady;
+
   public:
     enum { NONE = ' ', WAIT = 'w', EXEC = 'e', COND = 'c' };
     char debugOpCode;
@@ -39,12 +41,14 @@ class AStep {
         debugOpCode = NONE;
         infraPtr = nullptr;
         next = nullptr;
+        stepReady = false;
     }
     explicit AStep( FutureFunction fn_ ) {
         debugOpCode = EXEC;
         infraPtr = nullptr;
-        fn = fn_;
         next = nullptr;
+        fn = fn_;
+        stepReady = false;
     }
     AStep( AStep&& other );
     AStep( const AStep& other ) = default;
@@ -56,8 +60,14 @@ class AStep {
             p = p->next;
         return p;
     }
+    void setStepReady() {
+        stepReady = true;;
+    }
+    bool isStepReady() const {
+        return stepReady;
+    }
     void debugDump( const char* prefix ) const {
-//        INFRATRACE0( "{} {} '{}' infra->{} next->{}", prefix, ( void* )this, debugOpCode, ( void* )infraPtr, ( void* )next );
+        INFRATRACE4( "{} {} '{}' infra->{} next->{}", prefix, ( void* )this, debugOpCode, ( void* )infraPtr, ( void* )next );
     }
     void debugDumpChain( const char* prefix ) const {
         debugDump( prefix );
@@ -160,7 +170,7 @@ class CCode {
         exec( s.step );
     }
 
-    static void exec( const AStep* s );
+    static void exec( AStep* s );
 
     static CStep ttry( CStep s ) {
         s.step->debugDump( "ttry 1" );
