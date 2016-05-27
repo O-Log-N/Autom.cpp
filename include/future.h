@@ -70,7 +70,7 @@ class InfraFuture : public InfraFutureBase {
     }
 
     void debugDump() const override {
-        INFRATRACE4( "    refcnt {} {}", refCount, multi );
+        INFRATRACE4( "    {} refcnt {} {}", ( void* )this, refCount, multi );
     }
 };
 

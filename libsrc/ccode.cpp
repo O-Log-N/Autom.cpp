@@ -54,8 +54,12 @@ void CIfStep::infraEelseImpl( AStep* second ) {
         while( passive ) {
             tmp = passive;
             passive = passive->next;
-            if( tmp->infraPtr )
+            if( tmp->infraPtr ) {
+                AASSERT4( tmp->debugOpCode == 'w' );
+                AASSERT4( tmp->infraPtr->refCount > 1 );
+                tmp->infraPtr->refCount--;
                 tmp->infraPtr->cleanup();
+            }
             tmp->debugDump( "    deleting passive branch:" );
             delete tmp;
         }
@@ -66,10 +70,13 @@ CStep CCode::waitFor( const FutureBase& future ) {
     AStep* a = new AStep;
     a->debugOpCode = AStep::WAIT;
     a->infraPtr = future.infraGetPtr();
+    a->infraPtr->refCount++;
     future.then( [a]( const std::exception * ex ) {
         AASSERT4( a->infraPtr->isDataReady() );
-        if( a->isStepReady() )
+        if( a->isStepReady() ) {
+            a->debugDump( "callback" );
             exec( a );
+        }
     } );
     CStep s;
     s.step = a;
@@ -100,8 +107,12 @@ CIfStep CCode::infraIifImpl( const Future<bool>& b, AStep* c ) {
             while( passive ) {
                 auto tmp = passive;
                 passive = passive->next;
-                if( tmp->infraPtr )
+                if( tmp->infraPtr ) {
+                    AASSERT4( tmp->debugOpCode == 'w' );
+                    AASSERT4( tmp->infraPtr->refCount > 1 );
+                    tmp->infraPtr->refCount--;
                     tmp->infraPtr->cleanup();
+                }
                 tmp->debugDump( "    deleting iif branch:" );
                 delete tmp;
             }
@@ -120,10 +131,10 @@ void CCode::exec( AStep* s ) {
             AASSERT4( AStep::WAIT == s->debugOpCode );
             AASSERT4( s->infraPtr->refCount > 0 );
             if( s->infraPtr->isDataReady() ) {
-                INFRATRACE4( "Processing event {} ...", ( void* )s->infraPtr );
-                s->infraPtr->cleanup();
+                s->infraPtr->refCount--;
+                INFRATRACE4( "Processing event {} cnt {} ...", ( void* )s->infraPtr, s->infraPtr->refCount );
             } else {
-                INFRATRACE4( "Waiting event {} ...", ( void* )s->infraPtr );
+                INFRATRACE4( "Waiting event {} cnt {} ...", ( void* )s->infraPtr, s->infraPtr->refCount );
                 s->setStepReady();
                 return;
             }
