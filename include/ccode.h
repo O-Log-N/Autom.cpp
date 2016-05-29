@@ -123,12 +123,9 @@ class CStep {
 
 class CIfStep : public CStep {
   public:
-    AStep* branch;
-    const Future<bool>* condition;
-
-    CIfStep() : branch( nullptr ), condition( nullptr ) {}
-    CIfStep( AStep* p ) : branch( nullptr ), condition( nullptr ), CStep( p ) {}
-    CIfStep( StepFunction fn ) : condition( nullptr ), branch( nullptr ), CStep( fn ) {}
+    CIfStep() {}
+    CIfStep( AStep* p ) : CStep( p ) {}
+    CIfStep( StepFunction fn ) : CStep( fn ) {}
     CIfStep( const CIfStep& ) = default;
     CIfStep( CIfStep&& ) = default;
     CIfStep& operator=( CIfStep&& ) = default;
