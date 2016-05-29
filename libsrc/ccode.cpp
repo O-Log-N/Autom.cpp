@@ -101,14 +101,16 @@ void CIfStep::infraEelseImpl( AStep* c2 ) {
     AASSERT4( c2 );
 
     IifFunctor* iif = step->fn.target< IifFunctor >();
+
+    iif->c1->debugDumpChain( "====IFELSE FIRST BRANCH" );
+    c2->debugDumpChain( "====IFELSE SCOND BRANCH" );
+
     EelseFunctor func( iif->b );
     func.c1 = iif->c1;
     func.c2 = c2;
     func.head = step;
     func.e1 = func.c1->endOfChain();
     func.e2 = c2->endOfChain();
-    func.c1->debugDumpChain( "====IFELSE FIRST BRANCH" );
-    func.c2->debugDumpChain( "====IFELSE SCOND BRANCH" );
 
     step->fn = func;
 }
@@ -118,33 +120,39 @@ CIfStep CCode::infraIifImpl( const Future<bool>& b, AStep* c ) {
     c->debugDumpChain( "iifImpl" );
 
     IifFunctor func( b );
-    func.head = new AStep;
-    func.head->debugOpCode = AStep::COND;
     func.c1 = c;
     func.e1 = c->endOfChain();
+    func.head = new AStep;
+    func.head->debugOpCode = AStep::COND;
     func.head->fn = func;
 
-    CIfStep s;
-    s.step = func.head;
-    return s;
+    return CIfStep( func.head );
 }
+
+struct WaitFunctor {
+    AStep* a;
+
+    explicit WaitFunctor( AStep* a_ ) : a( a_ ) {}
+    void operator() ( const std::exception* ex ) {
+        AASSERT4( a->debugOpCode == AStep::WAIT );
+        AASSERT4( a->infraPtr );
+        AASSERT4( a->infraPtr->isDataReady() );
+        if( a->isStepReady() ) {
+            a->debugDump( "callback" );
+            CCode::exec( a );
+        }
+    }
+};
 
 CStep CCode::waitFor( const FutureBase& future ) {
     AStep* a = new AStep;
     a->debugOpCode = AStep::WAIT;
     a->infraPtr = future.infraGetPtr();
     a->infraPtr->refCount++;
-    future.then( [a]( const std::exception * ex ) {
-        AASSERT4( a->infraPtr->isDataReady() );
-        if( a->isStepReady() ) {
-            a->debugDump( "callback" );
-            exec( a );
-        }
-    } );
-    CStep s;
-    s.step = a;
-    s.step->debugDumpChain( "waitFor" );
-    return s;
+    future.then( WaitFunctor( a ) );
+    a->debugDumpChain( "waitFor" );
+
+    return CStep( a );
 }
 
 void CCode::exec( AStep* s ) {
