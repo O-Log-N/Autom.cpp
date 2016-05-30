@@ -150,8 +150,7 @@ Future< TcpClientConn > net::connect( Node* node, int port ) {
 std::exception* Buffer::fromNetwork( const NetworkBuffer& b ) {
     static int cnt = 0;
     if( ++cnt % 5 == 0 ) {
-        auto ex = new std::exception( "Ill formed reply" );
-        return ex;
+        return new std::exception();
     }
 
     s = b;
