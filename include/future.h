@@ -44,7 +44,7 @@ class InfraFutureBase {
     void cleanup() {
         if( multi )
             return;
-        fn = FutureFunction();
+        fn = nullptr;
         //The line above effectively destroys existing lambda it->second.fn
         //  First, we CAN do it, as we don't need second.fn anymore at all
         //  Second, we SHOULD do it, to avoid cyclical references from lambda

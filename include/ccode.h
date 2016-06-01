@@ -61,7 +61,7 @@ class AStep {
         return p;
     }
     void setStepReady() {
-        stepReady = true;;
+        stepReady = true;
     }
     bool isStepReady() const {
         return stepReady;
@@ -168,6 +168,7 @@ class CCode {
     }
 
     static void exec( AStep* s );
+    static void deleteChain( AStep* s );
 
     static CStep ttry( CStep s ) {
         s.step->debugDump( "ttry 1" );
