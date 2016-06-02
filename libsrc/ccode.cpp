@@ -165,9 +165,13 @@ CStep CCode::waitFor( const FutureBase& future ) {
 }
 
 void CCode::setExhandlerChain( AStep* s, ExHandlerFunction handler ) {
+    static int globalId = 0; // TODO: implement
+    int id = ++globalId;
     while( s ) {
-        if( !s->exHandler )
+        if( !s->exHandler ) {
             s->exHandler = handler;
+            s->exId = id;
+        }
         if( !s->infraPtr ) {
             AASSERT4( ( AStep::EXEC == s->debugOpCode ) || ( AStep::COND == s->debugOpCode ) );
             auto iif = s->fn.target< IifFunctor >();
@@ -186,9 +190,11 @@ void CCode::setExhandlerChain( AStep* s, ExHandlerFunction handler ) {
 }
 
 AStep* CCode::deleteChain( AStep* s, bool ex ) {
+    int exId = s->exId;
     while( s ) {
-        if( ex && !s->exHandler )
-            return s;
+        if( ex )
+            if( !s->exHandler || ( s->exId != exId ) )
+                return s;
         if( s->infraPtr ) {
             AASSERT4( AStep::WAIT == s->debugOpCode );
             AASSERT4( s->infraPtr->refCount > 0 );
@@ -238,10 +244,10 @@ void CCode::exec( AStep* s ) {
                 if( s->exHandler ) {
                     s->exHandler( x );
                     s = deleteChain( s, true );
-					continue;
+                    continue;
                 } else {
                     deleteChain( s, false );
-					return;
+                    return;
                 }
             }
         }
