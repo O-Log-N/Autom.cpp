@@ -162,9 +162,17 @@ class CCode {
         s.step->debugDumpChain( "main\n" );
         exec( s.step );
     }
+	template< typename... Ts >
+	CCode( CStep& s, Ts&&... Vals ) {
+		auto e = s.step->endOfChain(  );
+		AASSERT4( ! e->next );
+		e->next = CStep::chain( Vals... ).step;
+		s.step->debugDumpChain( "main\n" );
+		exec( s.step );
+	}
 
     static void exec( AStep* s );
-    static void deleteChain( AStep* s );
+    static AStep* deleteChain( AStep* s, bool ex );
     static void setExhandlerChain( AStep* s, ExHandlerFunction handler );
 
     static CStep ttry( CStep s ) {

@@ -138,9 +138,13 @@ struct WaitFunctor {
         AASSERT4( a->debugOpCode == AStep::WAIT );
         AASSERT4( a->infraPtr );
         if( ex ) {
-            if( a->exHandler )
+            if( a->exHandler ) {
                 a->exHandler( *ex );
-            CCode::deleteChain( a );
+                a = CCode::deleteChain( a, true );
+                CCode::exec( a );
+            } else {
+                CCode::deleteChain( a, false );
+            }
         } else if( a->isStepReady() ) {
             AASSERT4( a->infraPtr->isDataReady() );
             a->debugDump( "callback" );
@@ -161,28 +165,30 @@ CStep CCode::waitFor( const FutureBase& future ) {
 }
 
 void CCode::setExhandlerChain( AStep* s, ExHandlerFunction handler ) {
-	while( s ) {
-		if( !s->exHandler )
-			s->exHandler = handler;
-		if( !s->infraPtr ) {
-			AASSERT4( ( AStep::EXEC == s->debugOpCode ) || ( AStep::COND == s->debugOpCode ) );
-			auto iif = s->fn.target< IifFunctor >();
-			if( iif ) {
-				setExhandlerChain( iif->c1, handler );
-			} else {
-				auto eelse = s->fn.target< EelseFunctor >();
-				if( eelse ) {
-					setExhandlerChain( eelse->c1, handler );
-					setExhandlerChain( eelse->c2, handler );
-				}
-			}
-		}
-		s = s->next;
-	}
+    while( s ) {
+        if( !s->exHandler )
+            s->exHandler = handler;
+        if( !s->infraPtr ) {
+            AASSERT4( ( AStep::EXEC == s->debugOpCode ) || ( AStep::COND == s->debugOpCode ) );
+            auto iif = s->fn.target< IifFunctor >();
+            if( iif ) {
+                setExhandlerChain( iif->c1, handler );
+            } else {
+                auto eelse = s->fn.target< EelseFunctor >();
+                if( eelse ) {
+                    setExhandlerChain( eelse->c1, handler );
+                    setExhandlerChain( eelse->c2, handler );
+                }
+            }
+        }
+        s = s->next;
+    }
 }
 
-void CCode::deleteChain( AStep* s ) {
+AStep* CCode::deleteChain( AStep* s, bool ex ) {
     while( s ) {
+        if( ex && !s->exHandler )
+            return s;
         if( s->infraPtr ) {
             AASSERT4( AStep::WAIT == s->debugOpCode );
             AASSERT4( s->infraPtr->refCount > 0 );
@@ -193,12 +199,12 @@ void CCode::deleteChain( AStep* s ) {
             AASSERT4( ( AStep::EXEC == s->debugOpCode ) || ( AStep::COND == s->debugOpCode ) );
             auto iif = s->fn.target< IifFunctor >();
             if( iif ) {
-                deleteChain( iif->c1 );
+                deleteChain( iif->c1, false );
             } else {
                 auto eelse = s->fn.target< EelseFunctor >();
                 if( eelse ) {
-                    deleteChain( eelse->c1 );
-                    deleteChain( eelse->c2 );
+                    deleteChain( eelse->c1, false );
+                    deleteChain( eelse->c2, false );
                 }
             }
         }
@@ -208,6 +214,7 @@ void CCode::deleteChain( AStep* s ) {
         tmp->debugDump( "    deleting after exception" );
         delete tmp;
     }
+    return nullptr;
 }
 
 void CCode::exec( AStep* s ) {
@@ -228,10 +235,14 @@ void CCode::exec( AStep* s ) {
             try {
                 s->fn( nullptr );
             } catch( const std::exception& x ) {
-                if( s->exHandler )
+                if( s->exHandler ) {
                     s->exHandler( x );
-                deleteChain( s );
-                return;
+                    s = deleteChain( s, true );
+					continue;
+                } else {
+                    deleteChain( s, false );
+					return;
+                }
             }
         }
 
