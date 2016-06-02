@@ -67,7 +67,7 @@ class AStep {
         return stepReady;
     }
     void debugDump( const char* prefix ) const {
-        INFRATRACE4( "{} {} '{}' infra->{} next->{}", prefix, ( void* )this, debugOpCode, ( void* )infraPtr, ( void* )next );
+        INFRATRACE4( "{} {} '{}'{} infra->{} next->{}", prefix, ( void* )this, debugOpCode, exHandler ? " EX" : "", ( void* )infraPtr, ( void* )next );
     }
     void debugDumpChain( const char* prefix ) const {
         debugDump( prefix );
@@ -91,11 +91,7 @@ class CStep {
     CStep( CStep&& ) = default;
     CStep& operator=( CStep&& ) = default;
 
-    CStep ccatch( ExHandlerFunction handler ) {
-        for( auto it = this->step; it; it = it->next )
-            it->exHandler = handler;
-        return *this;
-    }
+    CStep ccatch( ExHandlerFunction handler );
 
     static CStep chain( StepFunction fn ) {
         CStep s( fn );
@@ -169,6 +165,7 @@ class CCode {
 
     static void exec( AStep* s );
     static void deleteChain( AStep* s );
+    static void setExhandlerChain( AStep* s, ExHandlerFunction handler );
 
     static CStep ttry( CStep s ) {
         s.step->debugDump( "ttry 1" );

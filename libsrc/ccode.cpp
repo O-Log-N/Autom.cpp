@@ -16,6 +16,11 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 
 namespace autom {
 
+CStep CStep::ccatch( ExHandlerFunction handler ) {
+    CCode::setExhandlerChain( this->step, handler );
+    return *this;
+}
+
 struct IifFunctor {
     const Future<bool> b;
     AStep* head;
@@ -96,7 +101,7 @@ void CIfStep::infraEelseImpl( AStep* c2 ) {
     AASSERT4( step->debugOpCode == AStep::COND );
     AASSERT4( c2 );
 
-    IifFunctor* iif = step->fn.target< IifFunctor >();
+    auto iif = step->fn.target< IifFunctor >();
 
     iif->c1->debugDumpChain( "====IFELSE FIRST BRANCH" );
     c2->debugDumpChain( "====IFELSE SCOND BRANCH" );
@@ -153,6 +158,27 @@ CStep CCode::waitFor( const FutureBase& future ) {
     a->debugDumpChain( "waitFor" );
 
     return CStep( a );
+}
+
+void CCode::setExhandlerChain( AStep* s, ExHandlerFunction handler ) {
+	while( s ) {
+		if( !s->exHandler )
+			s->exHandler = handler;
+		if( !s->infraPtr ) {
+			AASSERT4( ( AStep::EXEC == s->debugOpCode ) || ( AStep::COND == s->debugOpCode ) );
+			auto iif = s->fn.target< IifFunctor >();
+			if( iif ) {
+				setExhandlerChain( iif->c1, handler );
+			} else {
+				auto eelse = s->fn.target< EelseFunctor >();
+				if( eelse ) {
+					setExhandlerChain( eelse->c1, handler );
+					setExhandlerChain( eelse->c2, handler );
+				}
+			}
+		}
+		s = s->next;
+	}
 }
 
 void CCode::deleteChain( AStep* s ) {
