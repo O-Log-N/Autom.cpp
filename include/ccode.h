@@ -27,9 +27,15 @@ using ExHandlerFunction = std::function< void( const std::exception& ) >;
 
 
 class AStep {
-    bool stepReady;
+    friend class CStep;
+    friend class CIfStep;
+    friend class CTryStep;
+    friend class CCode;
+    friend struct IifFunctor;
+    friend struct EelseFunctor;
+    friend struct WaitFunctor;
 
-  public:
+    bool stepReady;
     enum { NONE = ' ', WAIT = 'w', EXEC = 'e', COND = 'c' };
     char debugOpCode;
     InfraFutureBase* infraPtr;
@@ -38,6 +44,7 @@ class AStep {
     int exId;
     AStep* next;
 
+  public:
     AStep() {
         debugOpCode = NONE;
         infraPtr = nullptr;
@@ -55,6 +62,7 @@ class AStep {
     AStep( const AStep& other ) = default;
     ~AStep() = default;
 
+  private:
     AStep* endOfChain() {
         auto p = this;
         while( p->next )
@@ -78,12 +86,15 @@ class AStep {
 };
 
 class CStep {
-  public:
+    friend class CIfStep;
+    friend class CTryStep;
+    friend class CCode;
+
     AStep* step;
 
-    CStep() : step( nullptr ) {}
-    CStep( AStep* p ) : step( p ) {}
-    CStep( StepFunction fn ) {
+  public:
+    explicit CStep( AStep* p ) : step( p ) {}
+    explicit CStep( StepFunction fn ) {
         step = new AStep( [ = ]( const std::exception* ) {
             fn();
         } );
@@ -92,8 +103,7 @@ class CStep {
     CStep( CStep&& ) = default;
     CStep& operator=( CStep&& ) = default;
 
-    CStep ccatch( ExHandlerFunction handler );
-
+  private:
     static CStep chain( StepFunction fn ) {
         CStep s( fn );
         s.step->debugDump( "chain 1" );
@@ -120,9 +130,8 @@ class CStep {
 
 class CIfStep : public CStep {
   public:
-    CIfStep() {}
-    CIfStep( AStep* p ) : CStep( p ) {}
-    CIfStep( StepFunction fn ) : CStep( fn ) {}
+    explicit CIfStep( AStep* p ) : CStep( p ) {}
+    explicit CIfStep( StepFunction fn ) : CStep( fn ) {}
     CIfStep( const CIfStep& ) = default;
     CIfStep( CIfStep&& ) = default;
     CIfStep& operator=( CIfStep&& ) = default;
@@ -157,6 +166,18 @@ class CIfStep : public CStep {
     }
 };
 
+class CTryStep : public CStep {
+  public:
+    explicit CTryStep( AStep* p ) : CStep( p ) {}
+    explicit CTryStep( CStep s ) : CStep( s ) {}
+    explicit CTryStep( StepFunction fn ) : CStep( fn ) {}
+    CTryStep( const CTryStep& ) = default;
+    CTryStep( CTryStep&& ) = default;
+    CTryStep& operator=( CTryStep&& ) = default;
+
+    CTryStep ccatch( ExHandlerFunction handler );
+};
+
 class CCode {
   public:
     CCode( const CStep& s ) {
@@ -168,24 +189,24 @@ class CCode {
     static AStep* deleteChain( AStep* s, bool ex );
     static void setExhandlerChain( AStep* s, ExHandlerFunction handler );
 
-    static CStep ttry( CStep s ) {
+    static CTryStep ttry( CStep s ) {
         s.step->debugDump( "ttry 1" );
-        return s;
+        return CTryStep( s );
     }
-    static CStep ttry( StepFunction fn ) {
-        CStep s( fn );
+    static CTryStep ttry( StepFunction fn ) {
+        CTryStep s( fn );
         s.step->debugDump( "ttry 2" );
         return s;
     }
     template< typename... Ts >
-    static CStep ttry( CStep s, Ts&&... Vals ) {
+    static CTryStep ttry( CStep s, Ts&&... Vals ) {
         s.step->next = ttry( Vals... ).step;
         s.step->debugDump( "ttry 3" );
-        return s;
+        return CTryStep( s );
     }
     template< typename... Ts >
-    static CStep ttry( StepFunction fn, Ts&&... Vals ) {
-        CStep s = ttry( fn );
+    static CTryStep ttry( StepFunction fn, Ts&&... Vals ) {
+        CTryStep s = ttry( fn );
         s.step->next = ttry( Vals... ).step;
         s.step->debugDump( "ttry 4" );
         return s;

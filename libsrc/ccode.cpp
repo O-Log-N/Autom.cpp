@@ -16,8 +16,8 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 
 namespace autom {
 
-CStep CStep::ccatch( ExHandlerFunction handler ) {
-    CCode::setExhandlerChain( this->step, handler );
+CTryStep CTryStep::ccatch( ExHandlerFunction handler ) {
+    CCode::setExhandlerChain( step, handler );
     return *this;
 }
 
@@ -190,7 +190,7 @@ void CCode::setExhandlerChain( AStep* s, ExHandlerFunction handler ) {
 }
 
 AStep* CCode::deleteChain( AStep* s, bool ex ) {
-    int exId = s->exId;
+    int exId = s ? s->exId : 0;
     while( s ) {
         if( ex )
             if( !s->exHandler || ( s->exId != exId ) )
