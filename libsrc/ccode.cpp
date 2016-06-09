@@ -27,7 +27,12 @@ struct IifFunctor {
     AStep* c1;
     AStep* e1;
 
-    explicit IifFunctor( const Future<bool>& b_ ) : b( b_ ) {};
+    explicit IifFunctor( const Future<bool>& b_, AStep* c_ ) : b( b_ ), c1( c_ ) {
+        e1 = c1->endOfChain();
+        head = new AStep;
+        head->debugOpCode = AStep::COND;
+        head->fn = *this;
+    };
     void operator() ( const std::exception * ex ) {
         if( b.value() ) {
             // insert active branch in execution chain
@@ -119,15 +124,7 @@ void CIfStep::infraEelseImpl( AStep* c2 ) {
 CIfStep CCode::infraIifImpl( const Future<bool>& b, AStep* c ) {
     AASSERT4( c );
     c->debugDumpChain( "iifImpl" );
-
-    IifFunctor func( b );
-    func.c1 = c;
-    func.e1 = c->endOfChain();
-    func.head = new AStep;
-    func.head->debugOpCode = AStep::COND;
-    func.head->fn = func;
-
-    return CIfStep( func.head );
+    return CIfStep( IifFunctor( b, c ).head );
 }
 
 struct WaitFunctor {
