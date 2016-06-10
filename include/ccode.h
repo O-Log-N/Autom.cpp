@@ -117,13 +117,13 @@ class CStep {
     static CStep chain( StepFunction fn, Ts&&... Vals ) {
         CStep s( fn );
         s.step->next = chain( Vals... ).step;
-        s.step->debugDump( "chain 2" );
+        s.step->debugDump( "chain 3" );
         return s;
     }
     template< typename... Ts >
     static CStep chain( CStep s, Ts&&... Vals ) {
-        AASSERT4( nullptr == s.step->next );
-        s.step->next = chain( Vals... ).step;
+        s.step->endOfChain()->next = chain( Vals... ).step;
+        s.step->debugDump( "chain 4" );
         return s;
     }
 };
@@ -181,6 +181,24 @@ class CTryStep : public CStep {
 class CCode {
   public:
     CCode( const CStep& s ) {
+        s.step->debugDumpChain( "main\n" );
+        exec( s.step );
+    }
+    CCode( StepFunction fn ) {
+        CStep s( fn );
+        s.step->debugDumpChain( "main\n" );
+        exec( s.step );
+    }
+    template< typename... Ts >
+    CCode( const CStep& s, Ts... Vals ) {
+        s.step->next = CStep::chain( Vals... ).step;
+        s.step->debugDumpChain( "main\n" );
+        exec( s.step );
+    }
+    template< typename... Ts >
+    CCode( StepFunction fn, Ts... Vals ) {
+        CStep s( fn );
+        s.step->next = CStep::chain( Vals... ).step;
         s.step->debugDumpChain( "main\n" );
         exec( s.step );
     }
