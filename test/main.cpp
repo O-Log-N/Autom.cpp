@@ -264,67 +264,67 @@ class NodeServer5 : public Node {
         Future<bool> cond( this );
 
         CCode code(
-            BEGIN
+        BEGIN
             TTRY
-            BEGIN
-            startTimeout( data, this, 5 );
-            AWAIT( data )
-            infraConsole.log( "READ1: file {}---{}", fname.c_str(), "data" );
-            cond.setValue( false );
-            IIF( cond )
-            BEGIN
-            startTimeout( data2, this, 6 );
-            infraConsole.log( "Positive branch 1" );
-            AWAIT( data2 )
-            infraConsole.log( "READ2: {} : {}", "data", "data2" );
-            cond.setValue( false );
-            IIF( cond )
-            BEGIN
-            infraConsole.log( "nested iif +" );
-            END
-            EELSE
-            BEGIN
-            infraConsole.log( "nested iif -" );
-            END
-            ENDIIF
-            END
-            EELSE
-            BEGIN
-            TTRY
-            BEGIN
-            startTimeout( data3, this, 7 );
-            infraConsole.log( "Negative branch 2" );
-            cond.setValue( true );
-            AWAIT( data3 )
-            END
-            CCATCH
-            BEGINCATCH( const std::exception & x )
-            infraConsole.log( "nested catch" );
-            ENDCATCH
-            infraConsole.log( "READ3" );
-            END
-            ENDIIF
-            IIF( cond )
-            BEGIN
-            startTimeout( data4, this, 6 );
-            infraConsole.log( "Positive branch 3" );
-            AWAIT( data4 )
-            infraConsole.log( "READ4" );
-            END
-            EELSE
-            BEGIN
-            startTimeout( data5, this, 7 );
-            infraConsole.log( "Negative branch 3" );
-            AWAIT( data5 )
-            infraConsole.log( "READ5" );
-            END
-            ENDIIF
-            END
-            CCATCH
-            BEGINCATCH( const std::exception & x )
-            infraConsole.log( "oopsies: {}", x.what() );
-            ENDCATCH
-            END
+				BEGIN
+				startTimeout( data, this, 5 );
+				AWAIT( data )
+				infraConsole.log( "READ1: file {}---{}", fname.c_str(), "data" );
+				cond.setValue( false );
+				IIF( cond )
+					BEGIN
+					startTimeout( data2, this, 6 );
+					infraConsole.log( "Positive branch 1" );
+					AWAIT( data2 )
+					infraConsole.log( "READ2: {} : {}", "data", "data2" );
+					cond.setValue( false );
+					IIF( cond )
+						BEGIN
+						infraConsole.log( "nested iif +" );
+						END
+					EELSE
+						BEGIN
+						infraConsole.log( "nested iif -" );
+						END
+					ENDIIF
+					END
+				EELSE
+					BEGIN
+						TTRY
+							BEGIN
+							startTimeout( data3, this, 7 );
+							infraConsole.log( "Negative branch 2" );
+							cond.setValue( true );
+							AWAIT( data3 )
+							END
+						CCATCH
+							BEGINCATCH( const std::exception & x )
+							infraConsole.log( "nested catch" );
+							ENDCATCH
+						infraConsole.log( "READ3" );
+					END
+				ENDIIF
+				IIF( cond )
+					BEGIN
+					startTimeout( data4, this, 6 );
+					infraConsole.log( "Positive branch 3" );
+					AWAIT( data4 )
+					infraConsole.log( "READ4" );
+					END
+				EELSE
+					BEGIN
+					startTimeout( data5, this, 7 );
+					infraConsole.log( "Negative branch 3" );
+					AWAIT( data5 )
+					infraConsole.log( "READ5" );
+					END
+				ENDIIF
+			END
+        CCATCH
+			BEGINCATCH( const std::exception & x )
+			infraConsole.log( "oopsies: {}", x.what() );
+			ENDCATCH
+        END
         );//CCode
     }
 };
