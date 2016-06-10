@@ -243,18 +243,6 @@ class NodeServer4 : public Node {
     }
 };
 
-#define CCODE CCode code([=]()
-#define ENDCCODE });
-#define TTRY },CCode::ttry([=]()
-//NB: no starting } for CCATCH, as it ALWAYS comes after 'END'
-#define CCATCH(a) ).CTryStep::ccatch([=](a)
-#define ENDTTRY ),[=](){
-#define AWAIT(a) },CCode::waitFor(a),[=](){
-#define IIF(a) },CCode::iif(a,[=]()
-//NB: no starting } for EELSE and for ENDIIF, as they ALWAYS come after 'END'
-#define EELSE ).eelse([=]()
-#define ENDIIF ),[=](){
-
 class NodeServer5 : public Node {
 public:
 	void run() override {
@@ -317,7 +305,6 @@ public:
 		ENDCCODE
 	}
 };
-
 
 void testServer() {
     InfraNodeContainer fs;

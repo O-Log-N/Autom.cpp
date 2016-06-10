@@ -117,7 +117,7 @@ class CStep {
     static CStep chain( StepFunction fn, Ts&&... Vals ) {
         CStep s( fn );
         s.step->next = chain( Vals... ).step;
-        s.step->debugDump( "chain 3" );
+		s.step->debugDump( "chain 3" );
         return s;
     }
     template< typename... Ts >
@@ -260,5 +260,17 @@ class CCode {
 };
 
 }
+
+#define CCODE CCode code([=]()
+#define ENDCCODE });
+#define TTRY },CCode::ttry([=]()
+//NB: no starting } for CCATCH, as it ALWAYS comes after 'END'
+#define CCATCH(a) ).CTryStep::ccatch([=](a)
+#define ENDTTRY ),[=](){
+#define AWAIT(a) },CCode::waitFor(a),[=](){
+#define IIF(a) },CCode::iif(a,[=]()
+//NB: no starting } for EELSE and for ENDIIF, as they ALWAYS come after 'END'
+#define EELSE ).eelse([=]()
+#define ENDIIF ),[=](){
 
 #endif
