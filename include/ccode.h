@@ -34,9 +34,10 @@ class AStep {
     friend struct IifFunctor;
     friend struct EelseFunctor;
     friend struct WaitFunctor;
+    friend struct WhileFunctor;
 
     bool stepReady;
-    enum { NONE = ' ', WAIT = 'w', EXEC = 'e', COND = 'c' };
+    enum { NONE = ' ', WAIT = 'w', EXEC = 'e', COND = 'c', LOOP = 'l' };
     char debugOpCode;
     InfraFutureBase* infraPtr;
     FutureFunction fn;
@@ -52,6 +53,7 @@ class AStep {
         stepReady = false;
     }
     explicit AStep( FutureFunction fn_ ) {
+        AASSERT4( fn_ );
         debugOpCode = EXEC;
         infraPtr = nullptr;
         next = nullptr;
@@ -105,25 +107,20 @@ class CStep {
 
   private:
     static CStep chain( StepFunction fn ) {
-        CStep s( fn );
-        s.step->debugDump( "chain 1" );
-        return s;
+        return CStep( fn );
     }
     static CStep chain( CStep s ) {
-        s.step->debugDump( "chain 2" );
         return s;
     }
     template< typename... Ts >
     static CStep chain( StepFunction fn, Ts&&... Vals ) {
         CStep s( fn );
         s.step->next = chain( Vals... ).step;
-		s.step->debugDump( "chain 3" );
         return s;
     }
     template< typename... Ts >
     static CStep chain( CStep s, Ts&&... Vals ) {
         s.step->endOfChain()->next = chain( Vals... ).step;
-        s.step->debugDump( "chain 4" );
         return s;
     }
 };
@@ -204,7 +201,8 @@ class CCode {
     }
 
     static void exec( AStep* s );
-    static AStep* deleteChain( AStep* s, bool ex );
+	static void execLoop( AStep* s );
+	static AStep* deleteChain( AStep* s, bool ex );
     static void setExhandlerChain( AStep* s, ExHandlerFunction handler );
 
     static CTryStep ttry( CStep s ) {
@@ -233,6 +231,7 @@ class CCode {
 
   private:
     static CIfStep infraIifImpl( const Future<bool>& b, AStep* c );
+    static CStep infraWhileImpl( const Future<bool>& b, AStep* c );
 
   public:
     static CIfStep iif( const Future<bool>& b, StepFunction fn ) {
@@ -257,6 +256,29 @@ class CCode {
         s.step->debugDump( "iif 3" );
         return infraIifImpl( b, s.step );
     }
+
+    static CStep wwhile( const Future<bool>& b, StepFunction fn ) {
+        CStep s( fn );
+        s.step->debugDump( "while 0" );
+        return infraWhileImpl( b, s.step );
+    }
+    static CStep wwhile( const Future<bool>& b, CStep s ) {
+        s.step->debugDump( "while 1" );
+        return infraWhileImpl( b, s.step );
+    }
+    template< typename... Ts >
+    static CStep wwhile( const Future<bool>& b, StepFunction fn, Ts&&... Vals ) {
+        CStep s( fn );
+        s.step->next = CStep::chain( Vals... ).step;
+        s.step->debugDump( "while 2" );
+        return infraWhileImpl( b, s.step );
+    }
+    template< typename... Ts >
+    static CStep wwhile( const Future<bool>& b, CStep s, Ts&&... Vals ) {
+        s.step->next = CStep::chain( Vals... ).step;
+        s.step->debugDump( "while 3" );
+        return infraWhileImpl( b, s.step );
+    }
 };
 
 }
@@ -272,5 +294,7 @@ class CCode {
 //NB: no starting } for EELSE and for ENDIIF, as they ALWAYS come after 'END'
 #define EELSE ).eelse([=]()
 #define ENDIIF ),[=](){
+#define WWHILE(a) },CCode::wwhile(a,[=]()
+#define ENDWWHILE ),[=](){
 
 #endif

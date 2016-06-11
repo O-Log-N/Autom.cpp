@@ -34,26 +34,15 @@ struct IifFunctor {
         head->fn = *this;
     };
     void operator() ( const std::exception * ex ) {
-        if( b.value() ) {
+		AASSERT4( head->debugOpCode == AStep::COND );
+		if( b.value() ) {
             // insert active branch in execution chain
             auto tmp = head->next;
             head->next = c1;
             e1->next = tmp;
             head->debugDumpChain( "iif new exec chain:" );
         } else {
-            AStep* passive = c1;
-            while( passive ) {
-                auto tmp = passive;
-                passive = passive->next;
-                if( tmp->infraPtr ) {
-                    AASSERT4( tmp->debugOpCode == 'w' );
-                    AASSERT4( tmp->infraPtr->refCount > 1 );
-                    tmp->infraPtr->refCount--;
-                    tmp->infraPtr->cleanup();
-                }
-                tmp->debugDump( "    deleting iif branch:" );
-                delete tmp;
-            }
+			CCode::deleteChain( c1, false );
         }
     }
 };
@@ -68,7 +57,8 @@ struct EelseFunctor {
 
     explicit EelseFunctor( const Future<bool>& b_ ) : b( b_ ) {}
     void operator() ( const std::exception* ) {
-        // insert active branch into exec list
+		AASSERT4( head->debugOpCode == AStep::COND );
+		// insert active branch into exec list
         AStep* active, *passive, *end;
         if( b.value() ) {
             active = c1;
@@ -83,19 +73,7 @@ struct EelseFunctor {
         auto tmp = head->next;
         head->next = active;
         end->next = tmp;
-        // delete passive branch
-        while( passive ) {
-            tmp = passive;
-            passive = passive->next;
-            if( tmp->infraPtr ) {
-                AASSERT4( tmp->debugOpCode == 'w' );
-                AASSERT4( tmp->infraPtr->refCount > 1 );
-                tmp->infraPtr->refCount--;
-                tmp->infraPtr->cleanup();
-            }
-            tmp->debugDump( "    deleting passive branch:" );
-            delete tmp;
-        }
+		CCode::deleteChain( passive, false );
     }
 };
 
@@ -125,6 +103,34 @@ CIfStep CCode::infraIifImpl( const Future<bool>& b, AStep* c ) {
     AASSERT4( c );
     c->debugDumpChain( "iifImpl" );
     return CIfStep( IifFunctor( b, c ).head );
+}
+
+struct WhileFunctor {
+    const Future<bool> b;
+    AStep* head;
+    AStep* c1;
+    AStep* e1;
+
+    explicit WhileFunctor( const Future<bool>& b_, AStep* c_ ) : b( b_ ), c1( c_ ) {
+		AASSERT4( c1 );
+        e1 = c1->endOfChain();
+        head = new AStep;
+        head->debugOpCode = AStep::LOOP;
+        head->fn = *this;
+    };
+    void operator() ( const std::exception * ex ) {
+		AASSERT4( head->debugOpCode == AStep::LOOP );
+		while( b.value() ) {
+			CCode::execLoop( c1 );
+        }
+		CCode::deleteChain( c1, false );
+    }
+};
+
+CStep CCode::infraWhileImpl( const Future<bool>& b, AStep* c ) {
+    AASSERT4( c );
+    c->debugDumpChain( "wwhileImpl" );
+    return CStep( WhileFunctor( b, c ).head );
 }
 
 struct WaitFunctor {
@@ -170,7 +176,7 @@ void CCode::setExhandlerChain( AStep* s, ExHandlerFunction handler ) {
             s->exId = id;
         }
         if( !s->infraPtr ) {
-            AASSERT4( ( AStep::EXEC == s->debugOpCode ) || ( AStep::COND == s->debugOpCode ) );
+            AASSERT4( ( AStep::EXEC == s->debugOpCode ) || ( AStep::COND == s->debugOpCode ) || ( AStep::LOOP == s->debugOpCode ) );
             auto iif = s->fn.target< IifFunctor >();
             if( iif ) {
                 setExhandlerChain( iif->c1, handler );
@@ -234,7 +240,7 @@ void CCode::exec( AStep* s ) {
                 return;
             }
         } else {
-            AASSERT4( ( AStep::EXEC == s->debugOpCode ) || ( AStep::COND == s->debugOpCode ) );
+            AASSERT4( ( AStep::EXEC == s->debugOpCode ) || ( AStep::COND == s->debugOpCode ) || ( AStep::LOOP == s->debugOpCode ) );
             try {
                 s->fn( nullptr );
             } catch( const std::exception& x ) {
@@ -254,6 +260,33 @@ void CCode::exec( AStep* s ) {
         tmp->debugDump( "    deleting main" );
         delete tmp;
     }
+}
+
+void CCode::execLoop( AStep* s ) {
+	while( s ) {
+		if( s->infraPtr ) {
+			AASSERT4( AStep::WAIT == s->debugOpCode );
+			AASSERT4( s->infraPtr->refCount > 0 );
+			if( s->infraPtr->isDataReady() ) {
+				s->infraPtr->refCount--;
+				INFRATRACE4( "Processing event {} cnt {} ...", (void*)s->infraPtr, s->infraPtr->refCount );
+			} else {
+				INFRATRACE4( "Waiting event {} cnt {} ...", (void*)s->infraPtr, s->infraPtr->refCount );
+				s->setStepReady();
+				return;
+			}
+		} else {
+			AASSERT4( ( AStep::EXEC == s->debugOpCode ) || ( AStep::COND == s->debugOpCode ) || ( AStep::LOOP == s->debugOpCode ) );
+			try {
+				s->fn( nullptr );
+			}
+			catch( const std::exception& x ) {
+				INFRATRACE4( "exception: {}", x.what() );
+				return;
+			}
+		}
+		s = s->next;
+	}
 }
 
 }

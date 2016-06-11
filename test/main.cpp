@@ -244,90 +244,98 @@ class NodeServer4 : public Node {
 };
 
 class NodeServer5 : public Node {
-public:
-	void run() override {
-		std::string fname( "path1" );
-		Future<Timer> data( this ), data2( this ), data3( this ), data4( this ), data5( this );
-		Future<bool> cond( this );
+  public:
+    void run() override {
+        std::string fname( "path1" );
+        Future<Timer> data( this ), data2( this ), data3( this ), data4( this ), data5( this );
+        Future<bool> cond( this );
 
-		CCODE {
-			TTRY {
-			startTimeout( data, this, 5 );
-			AWAIT( data );
-			infraConsole.log( "READ1: file {}---{}", fname.c_str(), "data" );
-			cond.setValue( false );
-			IIF( cond ) {
-				startTimeout( data2, this, 6 );
-				infraConsole.log( "Positive branch 1" );
-				AWAIT( data2 );
-				infraConsole.log( "READ2: {} : {}", "data", "data2" );
-				cond.setValue( false );
-				IIF( cond ) {
-					infraConsole.log( "nested iif +" );
+        CCODE {
+            TTRY {
+                startTimeout( data, this, 5 );
+                AWAIT( data );
+                infraConsole.log( "READ1: file {}---{}", fname.c_str(), "data" );
+                cond.setValue( true );
+				WWHILE( cond ) {
+					static int cnt = 0;
+					cnt++;
+					infraConsole.log( "wwhile loop" );
+					if( cnt > 10 )
+						cond.setValue( false );
 				}
-				EELSE {
-					infraConsole.log( "nested iif -" );
-				}
-				ENDIIF
-			}
-			EELSE {
-				TTRY {
-					startTimeout( data3, this, 7 );
-					infraConsole.log( "Negative branch 2" );
-					cond.setValue( true );
-					AWAIT( data3 );
-				}
-				CCATCH( const std::exception & x ) {
-					infraConsole.log( "nested catch" );
-				}
-				ENDTTRY
-				infraConsole.log( "READ3" );
-			}
-			ENDIIF
-			IIF( cond ) {
-				startTimeout( data4, this, 6 );
-				infraConsole.log( "Positive branch 3" );
-				AWAIT( data4 );
-				infraConsole.log( "READ4" );
-			}
-			EELSE {
-				startTimeout( data5, this, 7 );
-				infraConsole.log( "Negative branch 3" );
-				AWAIT( data5 );
-				infraConsole.log( "READ5" );
-			}
-			ENDIIF
-		}
-		CCATCH( const std::exception & x ) {
-			infraConsole.log( "oopsies: {}", x.what() );
-		}
-		ENDTTRY
-		ENDCCODE
-	}
-};
+				ENDWWHILE
+                IIF( cond ) {
+                    startTimeout( data2, this, 6 );
+                    infraConsole.log( "Positive branch 1" );
+                    AWAIT( data2 );
+                    infraConsole.log( "READ2: {} : {}", "data", "data2" );
+                    cond.setValue( false );
+                    IIF( cond ) {
+                        infraConsole.log( "nested iif +" );
+                    }
+                    EELSE {
+                        infraConsole.log( "nested iif -" );
+                    }
+                    ENDIIF
+                }
+                EELSE {
+                    TTRY {
+                        startTimeout( data3, this, 7 );
+                        infraConsole.log( "Negative branch 2" );
+                        cond.setValue( true );
+                        AWAIT( data3 );
+                    }
+                    CCATCH( const std::exception & x ) {
+                        infraConsole.log( "nested catch" );
+                    }
+                    ENDTTRY
+                    infraConsole.log( "READ3" );
+                }
+                ENDIIF
+                IIF( cond ) {
+                    startTimeout( data4, this, 6 );
+                    infraConsole.log( "Positive branch 3" );
+                    AWAIT( data4 );
+                    infraConsole.log( "READ4" );
+                }
+                EELSE {
+                    startTimeout( data5, this, 7 );
+                    infraConsole.log( "Negative branch 3" );
+                    AWAIT( data5 );
+                    infraConsole.log( "READ5" );
+                }
+                ENDIIF
+            }
+            CCATCH( const std::exception & x ) {
+                infraConsole.log( "oopsies: {}", x.what() );
+            }
+            ENDTTRY
+            ENDCCODE
+        }
+    };
 
-void testServer() {
-    InfraNodeContainer fs;
-    Node* p = new NodeServer5;
-    fs.addNode( p );
-    fs.run();
-    fs.removeNode( p );
-    delete p;
-}
-
-int main() {
-    try {
-        testServer();
-        //      test3()
-        //      test2();
-        //		test1();
-    } catch( const std::exception& e ) {
-        console.error( "std::exception '{}'", e.what() );
-        return 1;
-    } catch( ... ) {
-        console.error( "Unknown exception!" );
-        return 2;
+    void testServer() {
+        InfraNodeContainer fs;
+        Node* p = new NodeServer5;
+        fs.addNode( p );
+        fs.run();
+        fs.removeNode( p );
+        delete p;
     }
 
-    return 0;
-}
+    int main() {
+        try {
+            testServer();
+            //      test3()
+            //      test2();
+            //		test1();
+        } catch( const std::exception& e ) {
+            console.error( "std::exception '{}'", e.what() );
+            return 1;
+        } catch( ... ) {
+            console.error( "Unknown exception!" );
+            return 2;
+        }
+
+        return 0;
+    }
