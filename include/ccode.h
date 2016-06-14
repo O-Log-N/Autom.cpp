@@ -37,12 +37,13 @@ class AStep {
     friend struct WhileFunctor;
 
     bool stepReady;
-    enum { NONE = ' ', WAIT = 'w', EXEC = 'e', COND = 'c', LOOP = 'l' };
+    enum { NONE = ' ', WAIT = 'W', EXEC = 'E', COND = 'C', LOOP = 'L' };
     char debugOpCode;
     InfraFutureBase* infraPtr;
     FutureFunction fn;
     ExHandlerFunction exHandler;
     int exId;
+	int refCount;
     AStep* next;
 
   public:
@@ -51,6 +52,7 @@ class AStep {
         infraPtr = nullptr;
         next = nullptr;
         stepReady = false;
+		refCount = 1;
     }
     explicit AStep( FutureFunction fn_ ) {
         AASSERT4( fn_ );
@@ -59,7 +61,8 @@ class AStep {
         next = nullptr;
         fn = fn_;
         stepReady = false;
-    }
+		refCount = 1;
+	}
     AStep( AStep&& other );
     AStep( const AStep& other ) = default;
     ~AStep() = default;
@@ -201,7 +204,6 @@ class CCode {
     }
 
     static void exec( AStep* s );
-	static void execLoop( AStep* s );
 	static AStep* deleteChain( AStep* s, bool ex );
     static void setExhandlerChain( AStep* s, ExHandlerFunction handler );
 
