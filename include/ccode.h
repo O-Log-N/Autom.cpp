@@ -43,26 +43,27 @@ class AStep {
     FutureFunction fn;
     ExHandlerFunction exHandler;
     int exId;
-	int refCount;
+    int refCount;
     AStep* next;
+    AStep* nextExec;
 
   public:
     AStep() {
         debugOpCode = NONE;
         infraPtr = nullptr;
-        next = nullptr;
+        nextExec = next = nullptr;
         stepReady = false;
-		refCount = 1;
+        refCount = 1;
     }
     explicit AStep( FutureFunction fn_ ) {
         AASSERT4( fn_ );
         debugOpCode = EXEC;
         infraPtr = nullptr;
-        next = nullptr;
+        nextExec = next = nullptr;
         fn = fn_;
         stepReady = false;
-		refCount = 1;
-	}
+        refCount = 1;
+    }
     AStep( AStep&& other );
     AStep( const AStep& other ) = default;
     ~AStep() = default;
@@ -204,8 +205,10 @@ class CCode {
     }
 
     static void exec( AStep* s );
-	static AStep* deleteChain( AStep* s, bool ex );
+    static void deleteChain( AStep* s, const AStep* e );
+    static AStep* deleteExChain( AStep* s );
     static void setExhandlerChain( AStep* s, ExHandlerFunction handler );
+    static void addRefChain( AStep* s, const AStep* e );
 
     static CTryStep ttry( CStep s ) {
         s.step->debugDump( "ttry 1" );
