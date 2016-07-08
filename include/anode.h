@@ -34,24 +34,24 @@ class InfraNodeContainer;
 class TcpSocket;
 
 struct NodeQItem {
-	FutureId id;
-	Node* node;
+    FutureId id;
+    Node* node;
 };
 
 struct NodeQTimer : public NodeQItem {
 };
 
 struct NodeQAccept : public NodeQItem {
-	TcpSocket* sock;
+    TcpSocket* sock;
 };
 
 struct NodeQBuffer : public NodeQItem {
-	NetworkBuffer b;
-	FutureId closeId;
+    NetworkBuffer b;
+    FutureId closeId;
 };
 
 struct NodeQConnect : public NodeQItem {
-	TcpSocket* sock;
+    TcpSocket* sock;
 };
 
 class Node {

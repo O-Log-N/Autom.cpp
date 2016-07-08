@@ -20,7 +20,6 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 namespace autom {
 
 class LoopContainer {
-  protected:
     uv_loop_t uvLoop;
 
   public :

@@ -183,6 +183,8 @@
     <ClInclude Include="..\include\future.h" />
     <ClInclude Include="..\include\net.h" />
     <ClInclude Include="..\include\timer.h" />
+    <ClInclude Include="..\include\zeronet.h" />
+    <ClInclude Include="..\include\zerotimer.h" />
     <ClInclude Include="..\libsrc\infra\infraconsole.h" />
     <ClInclude Include="..\libsrc\infra\loopcontainer.h" />
     <ClInclude Include="..\libsrc\infra\nodecontainer.h" />

@@ -19,7 +19,7 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #include "../3rdparty/libuv/include/uv.h"
 #include "aassert.h"
 #include "abuffer.h"
-#include "..\libsrc\infra\loopcontainer.h"
+#include "../libsrc/infra/loopcontainer.h"
 
 namespace autom {
 
