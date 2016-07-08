@@ -17,7 +17,6 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 
 #include "future.h"
 #include "abuffer.h"
-#include "anode.h"
 #include "zeronet.h"
 
 namespace autom {
@@ -42,19 +41,6 @@ class TcpServer {
     explicit TcpServer( Node* node_ ) : node( node_ ), zero( node_->parentLoop ) {}
 
     MultiFuture< TcpSocket > listen( int port );
-};
-
-struct NodeQAccept : public NodeQItem {
-    TcpSocket* sock;
-};
-
-struct NodeQBuffer : public NodeQItem {
-    NetworkBuffer b;
-    FutureId closeId;
-};
-
-struct NodeQConnect : public NodeQItem {
-    TcpSocket* sock;
 };
 
 namespace net {

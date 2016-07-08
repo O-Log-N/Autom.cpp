@@ -15,13 +15,9 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #ifndef TIMER_H
 #define TIMER_H
 
-#include "anode.h"
 #include "future.h"
 
 namespace autom {
-
-struct NodeQTimer : public NodeQItem {
-};
 
 class Timer {
 };

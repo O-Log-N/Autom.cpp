@@ -19,6 +19,7 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #include <unordered_map>
 
 #include "aassert.h"
+#include "abuffer.h"
 #include "../libsrc/infra/infraconsole.h"
 #include "../libsrc/infra/loopcontainer.h"
 
@@ -30,15 +31,27 @@ using FutureId = unsigned int;
 class Node;
 class InfraFutureBase;
 class InfraNodeContainer;
-
-struct NodeQTimer;
-struct NodeQAccept;
-struct NodeQBuffer;
-struct NodeQConnect;
+class TcpSocket;
 
 struct NodeQItem {
-    FutureId id;
-    Node* node;
+	FutureId id;
+	Node* node;
+};
+
+struct NodeQTimer : public NodeQItem {
+};
+
+struct NodeQAccept : public NodeQItem {
+	TcpSocket* sock;
+};
+
+struct NodeQBuffer : public NodeQItem {
+	NetworkBuffer b;
+	FutureId closeId;
+};
+
+struct NodeQConnect : public NodeQItem {
+	TcpSocket* sock;
 };
 
 class Node {
