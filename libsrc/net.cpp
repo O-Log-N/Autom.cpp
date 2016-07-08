@@ -19,8 +19,8 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 
 using namespace autom;
 
-TcpServer net::createServer( Node* node ) {
-    return TcpServer( node );
+TcpServer* net::createServer( Node* node ) {
+    return new TcpServer( node );
 }
 
 static void tcpCloseCb( uv_handle_t* handle ) {
@@ -32,41 +32,36 @@ static void allocCb( uv_handle_t* handle, size_t size, uv_buf_t* buff ) {
     buff->base = new char[size];
 }
 
-static void readCb( uv_stream_t* stream, ssize_t nread, const uv_buf_t* buff ) {
-    auto item = static_cast< NodeQBuffer* >( stream->data );
-    if( nread < 0 ) {
-        item->node->infraProcessTcpClosed( *item );
-        uv_close( ( uv_handle_t* )stream, tcpCloseCb );
-        delete item;
-    } else {
-        item->b.assign( buff->base, nread );
-        item->node->infraProcessTcpRead( *item );
-
-        uv_read_start( stream, allocCb, readCb );
-    }
-    delete[] buff->base;
+static void writeCb( uv_write_t* wr, int status ) {
+    delete wr;
 }
 
-MultiFuture< Buffer > TcpServerConn::read( Node* node ) const {
+MultiFuture< Buffer > TcpSocket::read() const {
     MultiFuture< Buffer > future( node );
-    NodeQBuffer* item = new NodeQBuffer;
-    item->id = future.infraGetId();
-    item->node = node;
-
-    stream->data = item;
-    uv_read_start( stream, allocCb, readCb );
+    auto id = future.infraGetId();
+    auto nd = node;
+    zero->on( TcpZeroSocket::ID_DATA, [id, nd]( const NetworkBuffer * b ) {
+        NodeQBuffer item;
+        item.id = id;
+        item.node = nd;
+        item.b = *b;
+        nd->infraProcessTcpRead( item );
+    } );
+    zero->on( TcpZeroSocket::ID_CLOSED, [id, nd]() {
+        NodeQBuffer item;
+        item.closeId = id;
+        nd->infraProcessTcpClosed( item );
+    } );
+    zero->read();
     return future;
 }
 
-void TcpServerConn::disconnect( Node* node ) const {
+void TcpSocket::write( const void* buff, size_t sz ) const {
+    zero->write( buff, sz );
+}
+/*
+void TcpSocket::close() const {
     uv_close( ( uv_handle_t * )stream, tcpCloseCb );
-}
-
-Future< TcpServerConn::Disconnected > TcpServerConn::closed( Node* node ) const {
-    Future< TcpServerConn::Disconnected > future( node );
-    AASSERT4( stream->data );
-    ( static_cast< NodeQBuffer* >( stream->data ) )->closeId = future.infraGetId();
-    return future;
 }
 
 static void acceptCb( uv_stream_t* server, int status ) {
@@ -75,82 +70,70 @@ static void acceptCb( uv_stream_t* server, int status ) {
     if( uv_accept( server, ( uv_stream_t * )serverConn ) == 0 ) {
         AASSERT4( server->data );
         auto item = static_cast<NodeQAccept*>( server->data );
-        item->stream = serverConn;
-        item->node->infraProcessTcpAccept( *item );
+        item->sock = new TcpSocket;
+        item->sock->stream = ( uv_stream_t * )serverConn;
+//        item->node->infraProcessTcpAccept( *item );
     } else {
         uv_close( ( uv_handle_t * )serverConn, tcpCloseCb );
+        auto item = static_cast<NodeQAccept*>( server->data );
     }
 }
+*/
+MultiFuture< TcpSocket > TcpServer::listen( int port ) {
+    MultiFuture< TcpSocket > future( node );
+    auto id = future.infraGetId();
+    auto nd = node;
+//	auto srv = this;
+    zero.on( ID_CONNECT, [id, nd]( TcpZeroSocket * zs ) {
+        NodeQAccept item;
+        item.id = id;
+        item.node = nd;
+//		item.server = srv;
+        item.sock = new TcpSocket;
+        item.sock->zero = zs;
+        item.sock->node = nd;
+        nd->infraProcessTcpAccept( item );
+    } );
 
-MultiFuture< TcpServerConn > TcpServer::listen( int port ) {
-    handle = new uv_tcp_t;
-    uv_tcp_init( node->parentFS->infraLoop(), handle );
-
-    sockaddr_in addr;
-    uv_ip4_addr( "127.0.0.1", port, &addr );
-    if( 0 == uv_tcp_bind( handle, ( sockaddr* )&addr, 0 ) ) {
-        if( 0 == uv_listen( ( uv_stream_t* )handle, 1024, acceptCb ) ) {
-            MultiFuture< TcpServerConn > future( node );
-            NodeQAccept* item = new NodeQAccept;
-            item->id = future.infraGetId();
-            item->node = node;
-            handle->data = item;
-            return future;
-        }
-    }
-    uv_close( ( uv_handle_t* )handle, tcpCloseCb );
-    return MultiFuture< TcpServerConn >();
-}
-
-static void writeCb( uv_write_t* wr, int status ) {
-    delete wr;
-}
-
-Future< TcpClientConn::WriteCompleted > TcpClientConn::write( Node* node, const void* buff, size_t sz ) const {
-    Future< WriteCompleted > future( node );
-    uv_write_t* wr = new uv_write_t;
-    uv_buf_t buf = uv_buf_init( ( char* )buff, sz );
-    uv_write( wr, stream, &buf, 1, writeCb );
+    if( ! zero.listen( port ) )
+        throw "ERROR";
     return future;
-}
-
-void TcpClientConn::close( Node* node ) const {
-    uv_close( ( uv_handle_t* )stream, tcpCloseCb );
 }
 
 static void tcpConnectedCb( uv_connect_t* req, int status ) {
     auto item = static_cast<NodeQConnect*>( req->data );
     if( status >= 0 ) {
-        item->stream = req->handle;
-        item->node->infraProcessTcpConnect( *item );
+//        item->stream = req->handle;
+//        item->node->infraProcessTcpConnect( *item );
     } else {
         uv_close( ( uv_handle_t* )req->handle, tcpCloseCb );
     }
     delete item;
     delete req;
 }
-
-Future< TcpClientConn > net::connect( Node* node, int port ) {
-    Future< TcpClientConn > future( node );
+/*
+TcpSocket* net::connect( Node* node, int port ) {
     uv_tcp_t* client = new uv_tcp_t;
-    uv_tcp_init( node->parentFS->infraLoop(), client );
+    uv_tcp_init( node->parentLoop->infraLoop(), client );
     sockaddr_in addr;
     uv_ip4_addr( "127.0.0.1", port, &addr );
     uv_connect_t* req = new uv_connect_t;
 
     auto item = new NodeQConnect;
-    item->id = future.infraGetId();
-    item->node = node;
+    item->sock = new TcpSocket;
+	item->sock->zero = new TcpZeroSocket;
+//    item->id = future.infraGetId();
+//    item->node = node;
     req->data = item;
 
     uv_tcp_connect( req, client, ( sockaddr* )&addr, tcpConnectedCb );
-    return future;
+    return item->sock;
 }
-
+*/
 std::exception* Buffer::fromNetwork( const NetworkBuffer& b ) {
     static int cnt = 0;
     if( ++cnt % 5 == 0 ) {
-        return new std::exception();
+//        return new std::exception();
     }
 
     s = b;

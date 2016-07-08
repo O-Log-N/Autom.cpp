@@ -17,35 +17,20 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 
 #include <set>
 
-#include "../../include/future.h"
-#include "../../3rdparty/libuv/include/uv.h"
-
 namespace autom {
 
+class LoopContainer;
 class Node;
 
 class InfraNodeContainer {
     std::set< Node* > nodes;
-    uv_loop_t uvLoop;
+    LoopContainer* zero;
 
   public:
-    InfraNodeContainer() {
-        uv_loop_init( &uvLoop );
-    }
-    ~InfraNodeContainer() {
-        uv_loop_close( &uvLoop );
-    }
-
-    uv_loop_t* infraLoop() {
-        return &uvLoop;
-    }
-
-    void run() {
-        uv_run( &uvLoop, UV_RUN_DEFAULT );
-    }
-
+    InfraNodeContainer( LoopContainer* c ) : zero( c ) {}
     void addNode( Node* node );
     void removeNode( Node* node );
+    void run();
     void debugDump( int line ) const;
 };
 

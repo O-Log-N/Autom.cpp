@@ -15,68 +15,55 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #ifndef NET_H
 #define NET_H
 
-#include "../3rdparty/libuv/include/uv.h"
 #include "future.h"
 #include "abuffer.h"
 #include "anode.h"
+#include "zeronet.h"
 
 namespace autom {
+
+class TcpSocket {
+  public:
+    TcpZeroSocket* zero;
+    Node* node;
+
+    void close() const;
+    MultiFuture< Buffer > read() const;
+    void write( const void* buff, size_t sz ) const;
+};
+
+class TcpServer {
+    TcpZeroServer zero;
+    Node* node;
+
+  public:
+    enum EventId { ID_ERROR = 1, ID_CONNECT = 2, };
+
+    explicit TcpServer( Node* node_ ) : node( node_ ), zero( node_->parentLoop ) {}
+
+    MultiFuture< TcpSocket > listen( int port );
+};
+
+struct NodeQAccept : public NodeQItem {
+    TcpSocket* sock;
+};
 
 struct NodeQBuffer : public NodeQItem {
     NetworkBuffer b;
     FutureId closeId;
 };
 
-struct NodeQAccept : public NodeQItem {
-    uv_tcp_t* stream;
-};
-
 struct NodeQConnect : public NodeQItem {
-    uv_stream_t* stream;
-};
-
-class TcpServerConn {
-    friend class Node;
-    class Disconnected {};
-    uv_stream_t* stream;
-
-  public:
-    MultiFuture< Buffer > read( Node* ) const;
-    Future< Buffer > write( Node*, const void* buff, size_t sz ) const {
-        return Future< Buffer >(); // TODO: implement
-    };
-    void disconnect( Node* ) const;
-    Future< Disconnected > closed( Node* ) const;
-};
-
-class TcpClientConn {
-    friend class Node;
-    class WriteCompleted {};
-    uv_stream_t* stream;
-
-  public:
-    Future< WriteCompleted > write( Node*, const void* buff, size_t sz ) const;
-    void close( Node* ) const;
-};
-
-class TcpServer {
-    Node* node;
-    uv_tcp_t* handle;
-
-  public:
-    explicit TcpServer( Node* node_ ) : node( node_ ) {}
-    MultiFuture< TcpServerConn > listen( int port );
+    TcpSocket* sock;
 };
 
 namespace net {
 
-TcpServer createServer( Node* node );
-Future< TcpClientConn > connect( Node* node, int port );
+TcpServer* createServer( Node* node );
+TcpSocket* connect( Node* node, int port );
 
 }
 
 }
 
 #endif
-
-

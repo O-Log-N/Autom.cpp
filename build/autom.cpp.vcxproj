@@ -96,6 +96,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <StringPooling>true</StringPooling>
       <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -133,6 +134,7 @@
       <DisableLanguageExtensions>false</DisableLanguageExtensions>
       <StringPooling>true</StringPooling>
       <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -167,6 +169,8 @@
     <ClCompile Include="..\libsrc\infra\nodecontainer.cpp" />
     <ClCompile Include="..\libsrc\net.cpp" />
     <ClCompile Include="..\libsrc\timer.cpp" />
+    <ClCompile Include="..\libsrc\zeronet.cpp" />
+    <ClCompile Include="..\libsrc\zerotimer.cpp" />
     <ClCompile Include="..\test\main.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -180,6 +184,7 @@
     <ClInclude Include="..\include\net.h" />
     <ClInclude Include="..\include\timer.h" />
     <ClInclude Include="..\libsrc\infra\infraconsole.h" />
+    <ClInclude Include="..\libsrc\infra\loopcontainer.h" />
     <ClInclude Include="..\libsrc\infra\nodecontainer.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

@@ -18,8 +18,9 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #include <exception>
 #include <unordered_map>
 
-#include "../libsrc/infra/infraconsole.h"
 #include "aassert.h"
+#include "../libsrc/infra/infraconsole.h"
+#include "../libsrc/infra/loopcontainer.h"
 
 namespace autom {
 
@@ -47,7 +48,7 @@ class Node {
 
   public:
     virtual ~Node() = default;
-    InfraNodeContainer* parentFS;
+    LoopContainer* parentLoop;
 
     FutureId nextFutureId() {
         return ++nextFutureIdCount;

@@ -11,32 +11,17 @@ You should have received a copy of the GNU General Public License along
 with this program; if not, write to the Free Software Foundation, Inc.,
 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 *******************************************************************************/
+#ifndef ZEROTIMER_H
+#define ZEROTIMER_H
 
-#include "nodecontainer.h"
-#include "loopcontainer.h"
-#include "../../include/anode.h"
+#include <functional>
+#include "..\libsrc\infra\loopcontainer.h"
 
-using namespace autom;
+namespace autom {
 
-void InfraNodeContainer::addNode( Node* node ) {
-    nodes.insert( node );
-    node->parentLoop = zero;
-    node->run();
+void setInterval( LoopContainer*, std::function< void( void ) >, unsigned secRepeat );
+void startTimeout( LoopContainer*, std::function< void( void ) >, unsigned secDelay );
+
 }
 
-void InfraNodeContainer::removeNode( Node* node ) {
-    node->futureCleanup();
-    AASSERT4( node->isEmpty() );
-    nodes.erase( node );
-}
-
-void InfraNodeContainer::run() {
-    zero->run();
-}
-
-void InfraNodeContainer::debugDump( int line ) const {
-    INFRATRACE4( "line {} Nodes: {} ----------", line, nodes.size() );
-    for( auto it : nodes ) {
-        it->debugDump();
-    }
-}
+#endif

@@ -179,7 +179,7 @@ class MultiFuture {
 
   public:
     explicit MultiFuture( Node* );
-    MultiFuture();
+//    MultiFuture();
     MultiFuture( const MultiFuture& ) = default;
     MultiFuture( MultiFuture&& ) = default;
     MultiFuture& operator=( const MultiFuture& ) = default;
@@ -202,14 +202,14 @@ MultiFuture< T >::MultiFuture( Node* node_ ) : node( node_ ) {
     f->multi = true;
     infraPtr = static_cast<InfraFuture< T >*>( node->insertInfraFuture( futureId, f ) );
 }
-
+/*
 template<typename T>
 inline MultiFuture<T>::MultiFuture() {
     futureId = 0;
     node = nullptr;
     infraPtr = nullptr;
 }
-
+*/
 template< typename T >
 void MultiFuture< T >::onEach( const FutureFunction& fn ) {
     AASSERT4( infraPtr == node->findInfraFuture( futureId ) );

@@ -12,31 +12,34 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 *******************************************************************************/
 
-#include "nodecontainer.h"
-#include "loopcontainer.h"
-#include "../../include/anode.h"
+#ifndef LOOPCONTAINER_H
+#define LOOPCONTAINER_H
 
-using namespace autom;
+#include "../../3rdparty/libuv/include/uv.h"
 
-void InfraNodeContainer::addNode( Node* node ) {
-    nodes.insert( node );
-    node->parentLoop = zero;
-    node->run();
-}
+namespace autom {
 
-void InfraNodeContainer::removeNode( Node* node ) {
-    node->futureCleanup();
-    AASSERT4( node->isEmpty() );
-    nodes.erase( node );
-}
+class LoopContainer {
+  protected:
+    uv_loop_t uvLoop;
 
-void InfraNodeContainer::run() {
-    zero->run();
-}
-
-void InfraNodeContainer::debugDump( int line ) const {
-    INFRATRACE4( "line {} Nodes: {} ----------", line, nodes.size() );
-    for( auto it : nodes ) {
-        it->debugDump();
+  public :
+    LoopContainer() {
+        uv_loop_init( &uvLoop );
     }
+    ~LoopContainer() {
+        uv_loop_close( &uvLoop );
+    }
+
+    uv_loop_t* infraLoop() {
+        return &uvLoop;
+    }
+
+    void run() {
+        uv_run( &uvLoop, UV_RUN_DEFAULT );
+    }
+};
+
 }
+
+#endif

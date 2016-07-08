@@ -30,13 +30,7 @@
     <ClCompile Include="..\test\main.cpp">
       <Filter>Resource Files\Source Files\test</Filter>
     </ClCompile>
-    <ClCompile Include="..\libsrc\aconsole.cpp">
-      <Filter>Resource Files\Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="..\libsrc\anode.cpp">
-      <Filter>Resource Files\Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\libsrc\net.cpp">
       <Filter>Resource Files\Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\libsrc\infra\nodecontainer.cpp">
@@ -46,6 +40,18 @@
       <Filter>Resource Files\Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\libsrc\ccode.cpp">
+      <Filter>Resource Files\Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\libsrc\zeronet.cpp">
+      <Filter>Resource Files\Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\libsrc\zerotimer.cpp">
+      <Filter>Resource Files\Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\libsrc\net.cpp">
+      <Filter>Resource Files\Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\libsrc\aconsole.cpp">
       <Filter>Resource Files\Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -81,6 +87,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\include\ccode.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libsrc\infra\loopcontainer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
