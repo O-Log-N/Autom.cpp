@@ -23,19 +23,6 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 
 namespace autom {
 
-class TcpZeroSocket;
-class TcpZeroServer;
-
-struct ZeroQBuffer {
-    NetworkBuffer b;
-    const TcpZeroSocket* sock;
-};
-
-struct ZeroQConnect {
-    uv_stream_t* stream;
-    TcpZeroSocket* sock;
-};
-
 class TcpZeroSocket {
   public:
     enum EventId { ID_ERROR = 1, ID_CONNECT, ID_DATA, ID_DRAIN, ID_CLOSED };
@@ -73,11 +60,6 @@ class TcpZeroSocket {
         else
             AASSERT4( false );
     }
-};
-
-struct ZeroQAccept {
-    TcpZeroServer* server;
-    TcpZeroSocket* sock;
 };
 
 class TcpZeroServer {

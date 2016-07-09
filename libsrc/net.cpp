@@ -13,7 +13,6 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 *******************************************************************************/
 
 #include "../include/net.h"
-#include "../include/anode.h"
 #include "infra/nodecontainer.h"
 
 
@@ -21,19 +20,6 @@ using namespace autom;
 
 TcpServer* net::createServer( Node* node ) {
     return new TcpServer( node );
-}
-
-static void tcpCloseCb( uv_handle_t* handle ) {
-    delete ( uv_tcp_t* )handle;
-}
-
-static void allocCb( uv_handle_t* handle, size_t size, uv_buf_t* buff ) {
-    buff->len = size;
-    buff->base = new char[size];
-}
-
-static void writeCb( uv_write_t* wr, int status ) {
-    delete wr;
 }
 
 MultiFuture< Buffer > TcpSocket::read() const {
@@ -65,7 +51,9 @@ void TcpSocket::close() const {
 }
 
 MultiFuture< TcpSocket > TcpServer::listen( int port ) {
-    MultiFuture< TcpSocket > future( node );
+	if( !zero.listen( port ) )
+		throw "ERROR";
+	MultiFuture< TcpSocket > future( node );
     auto id = future.infraGetId();
     auto nd = node;
     zero.on( ID_CONNECT, [id, nd]( TcpZeroSocket * zs ) {
@@ -78,41 +66,17 @@ MultiFuture< TcpSocket > TcpServer::listen( int port ) {
         nd->infraProcessTcpAccept( item );
     } );
 
-    if( ! zero.listen( port ) )
-        throw "ERROR";
     return future;
 }
 
-static void tcpConnectedCb( uv_connect_t* req, int status ) {
-    auto item = static_cast<NodeQConnect*>( req->data );
-    if( status >= 0 ) {
-//        item->stream = req->handle;
-//        item->node->infraProcessTcpConnect( *item );
-    } else {
-        uv_close( ( uv_handle_t* )req->handle, tcpCloseCb );
-    }
-    delete item;
-    delete req;
-}
-/*
 TcpSocket* net::connect( Node* node, int port ) {
-    uv_tcp_t* client = new uv_tcp_t;
-    uv_tcp_init( node->parentLoop->infraLoop(), client );
-    sockaddr_in addr;
-    uv_ip4_addr( "127.0.0.1", port, &addr );
-    uv_connect_t* req = new uv_connect_t;
-
-    auto item = new NodeQConnect;
-    item->sock = new TcpSocket;
-	item->sock->zero = new TcpZeroSocket;
-//    item->id = future.infraGetId();
-//    item->node = node;
-    req->data = item;
-
-    uv_tcp_connect( req, client, ( sockaddr* )&addr, tcpConnectedCb );
-    return item->sock;
+	auto sock = new TcpSocket;
+	sock->zero = connect( node->parentLoop, port );
+//	sock->zero->on( TcpZeroSocket::ID_CONNECT, []() {
+//	} );
+	return sock;
 }
-*/
+
 std::exception* Buffer::fromNetwork( const NetworkBuffer& b ) {
     static int cnt = 0;
     if( ++cnt % 5 == 0 ) {

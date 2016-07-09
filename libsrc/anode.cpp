@@ -71,8 +71,10 @@ void Node::infraProcessTcpClosed( const NodeQBuffer& item ) {
 void Node::infraProcessTcpConnect( const NodeQConnect& item ) {
     auto it = futureMap.find( item.id );
     if( it != futureMap.end() ) {
-        auto f = static_cast<InfraFuture< TcpClientConn >*>( it->second.get() );
-        f->infraGetData().stream = item.stream;
+        auto f = static_cast<InfraFuture< TcpSocket >*>( it->second.get() );
+		AASSERT4( item.node == item.sock->node );
+		f->infraGetData().node = item.node;
+		f->infraGetData().zero = item.sock->zero;
         f->setDataReady();
         it->second->fn( nullptr );
         it->second->cleanup();

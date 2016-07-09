@@ -18,12 +18,26 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 
 namespace autom {
 
+struct ZeroQBuffer {
+	NetworkBuffer b;
+	const TcpZeroSocket* sock;
+};
+
+struct ZeroQConnect {
+	TcpZeroSocket* sock;
+};
+
+struct ZeroQAccept {
+	TcpZeroServer* server;
+	TcpZeroSocket* sock;
+};
+
 TcpZeroServer* net::createServer( LoopContainer* loop ) {
     return new TcpZeroServer( loop );
 }
 
 static void tcpCloseCb( uv_handle_t* handle ) {
-    delete ( uv_tcp_t* )handle;
+	delete (uv_tcp_t*)handle;
 }
 
 static void allocCb( uv_handle_t* handle, size_t size, uv_buf_t* buff ) {
@@ -104,7 +118,7 @@ bool TcpZeroServer::listen( int port ) {
 static void tcpConnectedCb( uv_connect_t* req, int status ) {
     auto item = static_cast<ZeroQConnect*>( req->data );
     if( status >= 0 ) {
-        item->stream = req->handle;
+        item->sock->stream = req->handle;
         item->sock->onConnected();
     } else {
         uv_close( ( uv_handle_t* )req->handle, tcpCloseCb );
