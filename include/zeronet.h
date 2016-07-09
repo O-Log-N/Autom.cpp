@@ -55,7 +55,9 @@ class TcpZeroSocket {
 
     void read() const;
     void write( const void* buff, size_t sz ) const;
-    void on( int eventId, std::function< void( const NetworkBuffer* ) > fn ) {
+	void close() const;
+
+	void on( int eventId, std::function< void( const NetworkBuffer* ) > fn ) {
         if( ID_DATA == eventId )
             onRead = fn;
         else
@@ -71,8 +73,6 @@ class TcpZeroSocket {
         else
             AASSERT4( false );
     }
-
-    void close() const;
 };
 
 struct ZeroQAccept {

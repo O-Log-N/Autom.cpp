@@ -59,36 +59,19 @@ MultiFuture< Buffer > TcpSocket::read() const {
 void TcpSocket::write( const void* buff, size_t sz ) const {
     zero->write( buff, sz );
 }
-/*
+
 void TcpSocket::close() const {
-    uv_close( ( uv_handle_t * )stream, tcpCloseCb );
+	zero->close();
 }
 
-static void acceptCb( uv_stream_t* server, int status ) {
-    uv_tcp_t* serverConn = new uv_tcp_t;
-    uv_tcp_init( server->loop, serverConn );
-    if( uv_accept( server, ( uv_stream_t * )serverConn ) == 0 ) {
-        AASSERT4( server->data );
-        auto item = static_cast<NodeQAccept*>( server->data );
-        item->sock = new TcpSocket;
-        item->sock->stream = ( uv_stream_t * )serverConn;
-//        item->node->infraProcessTcpAccept( *item );
-    } else {
-        uv_close( ( uv_handle_t * )serverConn, tcpCloseCb );
-        auto item = static_cast<NodeQAccept*>( server->data );
-    }
-}
-*/
 MultiFuture< TcpSocket > TcpServer::listen( int port ) {
     MultiFuture< TcpSocket > future( node );
     auto id = future.infraGetId();
     auto nd = node;
-//	auto srv = this;
     zero.on( ID_CONNECT, [id, nd]( TcpZeroSocket * zs ) {
         NodeQAccept item;
         item.id = id;
         item.node = nd;
-//		item.server = srv;
         item.sock = new TcpSocket;
         item.sock->zero = zs;
         item.sock->node = nd;

@@ -304,10 +304,15 @@ class ZeroServer0 {
             console.log( "connected" );
             sock->on( TcpZeroSocket::ID_DATA, [ = ]( const NetworkBuffer * buff ) {
                 console.log( "read '{}'", buff->c_str() );
-                std::string s( "\r\nyou wrote: '" );
-                s += buff->c_str();
-                s += "'\r\n";
-                sock->write( s.c_str(), s.length() );
+				if( buff->c_str()[0] == 'Q' ) {
+					sock->close();
+					console.log( "Exit" );
+				} else {
+					std::string s( "\r\nyou wrote: '" );
+					s += buff->c_str();
+					s += "'\r\n";
+					sock->write( s.c_str(), s.length() );
+				}
             } );
             sock->on( TcpZeroSocket::ID_CLOSED, [ = ]() {
                 console.log( "closed" );
@@ -335,8 +340,13 @@ class NodeServer0 : public Node {
                 } else {
                     string s = futureData.value().toString();
                     console.log( "Future Data {}", s.c_str() );
-                    s = "You wrote: " + s + "\r\n";
-                    futureSock.value().write( s.c_str(), s.length() );
+					if( s[0] == 'Q' ) {
+						futureSock.value().close();
+						console.log( "Exit" );
+					} else {
+						s = "You wrote: " + s + "\r\n";
+						futureSock.value().write( s.c_str(), s.length() );
+					}
                 }
             } );
         } );
