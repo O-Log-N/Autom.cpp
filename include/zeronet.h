@@ -42,9 +42,9 @@ class TcpZeroSocket {
 
     void read() const;
     void write( const void* buff, size_t sz ) const;
-	void close() const;
+    void close() const;
 
-	void on( int eventId, std::function< void( const NetworkBuffer* ) > fn ) {
+    void on( int eventId, std::function< void( const NetworkBuffer* ) > fn ) {
         if( ID_DATA == eventId )
             onRead = fn;
         else
@@ -94,7 +94,7 @@ class TcpZeroServer {
 namespace net {
 
 TcpZeroServer* createServer( LoopContainer* loop );
-TcpZeroSocket* connect( LoopContainer* loop, int port );
+TcpZeroSocket* connect( LoopContainer* loop, const char* addr, int port );
 
 }
 

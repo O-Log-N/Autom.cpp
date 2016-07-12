@@ -35,7 +35,6 @@ class TcpSocket;
 
 struct NodeQItem {
     FutureId id;
-    Node* node;
 };
 
 struct NodeQTimer : public NodeQItem {
@@ -52,6 +51,9 @@ struct NodeQBuffer : public NodeQItem {
 
 struct NodeQConnect : public NodeQItem {
     TcpSocket* sock;
+};
+
+struct NodeQClosed : public NodeQItem {
 };
 
 class Node {
@@ -74,7 +76,7 @@ class Node {
     void infraProcessTimer( const NodeQTimer& item );
     void infraProcessTcpAccept( const NodeQAccept& item );
     void infraProcessTcpRead( const NodeQBuffer& item );
-    void infraProcessTcpClosed( const NodeQBuffer& item );
+    void infraProcessTcpClosed( const NodeQClosed& item );
     void infraProcessTcpConnect( const NodeQConnect& item );
 
     virtual void run() = 0;

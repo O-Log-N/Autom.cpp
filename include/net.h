@@ -46,7 +46,7 @@ class TcpServer {
 namespace net {
 
 TcpServer* createServer( Node* node );
-TcpSocket* connect( Node* node, int port );
+Future< TcpSocket > connect( Node* node, const char* addr, int port );
 
 }
 

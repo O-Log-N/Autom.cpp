@@ -35,8 +35,7 @@ void Node::infraProcessTcpAccept( const NodeQAccept& item ) {
     auto it = futureMap.find( item.id );
     if( it != futureMap.end() ) {
         auto f = static_cast<InfraFuture< TcpSocket >*>( it->second.get() );
-        AASSERT4( item.node == item.sock->node );
-        f->infraGetData().node = item.node;
+        f->infraGetData().node = this;
         f->infraGetData().zero = item.sock->zero;
         f->setDataReady();
         it->second->fn( nullptr );
@@ -58,8 +57,8 @@ void Node::infraProcessTcpRead( const NodeQBuffer& item ) {
     }
 }
 
-void Node::infraProcessTcpClosed( const NodeQBuffer& item ) {
-    auto it = futureMap.find( item.closeId );
+void Node::infraProcessTcpClosed( const NodeQClosed& item ) {
+    auto it = futureMap.find( item.id );
     if( it != futureMap.end() ) {
         std::exception ex;
         it->second->fn( &ex );
@@ -67,21 +66,20 @@ void Node::infraProcessTcpClosed( const NodeQBuffer& item ) {
         futureCleanup();
     }
 }
-/*
+
 void Node::infraProcessTcpConnect( const NodeQConnect& item ) {
     auto it = futureMap.find( item.id );
     if( it != futureMap.end() ) {
         auto f = static_cast<InfraFuture< TcpSocket >*>( it->second.get() );
-		AASSERT4( item.node == item.sock->node );
-		f->infraGetData().node = item.node;
-		f->infraGetData().zero = item.sock->zero;
+        f->infraGetData().node = this;
+        f->infraGetData().zero = item.sock->zero;
         f->setDataReady();
         it->second->fn( nullptr );
         it->second->cleanup();
         futureCleanup();
     }
 }
-*/
+
 InfraFutureBase* Node::insertInfraFuture( FutureId id, InfraFutureBase* inf ) {
     auto p = futureMap.insert( FutureMap::value_type( id, std::unique_ptr<InfraFutureBase>( inf ) ) );
     AASSERT4( p.second, "Duplicated FutureId" );

@@ -19,17 +19,17 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 namespace autom {
 
 struct ZeroQBuffer {
-	NetworkBuffer b;
-	const TcpZeroSocket* sock;
+    NetworkBuffer b;
+    const TcpZeroSocket* sock;
 };
 
 struct ZeroQConnect {
-	TcpZeroSocket* sock;
+    TcpZeroSocket* sock;
 };
 
 struct ZeroQAccept {
-	TcpZeroServer* server;
-	TcpZeroSocket* sock;
+    TcpZeroServer* server;
+    TcpZeroSocket* sock;
 };
 
 TcpZeroServer* net::createServer( LoopContainer* loop ) {
@@ -37,7 +37,7 @@ TcpZeroServer* net::createServer( LoopContainer* loop ) {
 }
 
 static void tcpCloseCb( uv_handle_t* handle ) {
-	delete (uv_tcp_t*)handle;
+    delete ( uv_tcp_t* )handle;
 }
 
 static void allocCb( uv_handle_t* handle, size_t size, uv_buf_t* buff ) {
@@ -121,24 +121,25 @@ static void tcpConnectedCb( uv_connect_t* req, int status ) {
         item->sock->stream = req->handle;
         item->sock->onConnected();
     } else {
+        item->sock->onError();
         uv_close( ( uv_handle_t* )req->handle, tcpCloseCb );
     }
     delete item;
     delete req;
 }
 
-TcpZeroSocket* net::connect( LoopContainer* loop, int port ) {
+TcpZeroSocket* net::connect( LoopContainer* loop, const char* addr, int port ) {
     uv_tcp_t* client = new uv_tcp_t;
     uv_tcp_init( loop->infraLoop(), client );
-    sockaddr_in addr;
-    uv_ip4_addr( "127.0.0.1", port, &addr );
+    sockaddr_in ip;
+    uv_ip4_addr( addr, port, &ip );
     uv_connect_t* req = new uv_connect_t;
 
     auto item = new ZeroQConnect;
     item->sock = new TcpZeroSocket;
     req->data = item;
 
-    uv_tcp_connect( req, client, ( sockaddr* )&addr, tcpConnectedCb );
+    uv_tcp_connect( req, client, ( sockaddr* )&ip, tcpConnectedCb );
     return item->sock;
 }
 

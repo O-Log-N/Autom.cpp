@@ -299,20 +299,28 @@ public:
 class ZeroServer0 {
   public:
     void run( LoopContainer& loop ) {
+        auto client = net::connect( &loop, "127.0.0.1", 8081 );
+        client->on( TcpZeroSocket::ID_CONNECT, [ = ]() {
+            console.log( "client connected" );
+        } );
+        client->on( TcpZeroSocket::ID_ERROR, [ = ]() {
+            console.log( "client error" );
+        } );
+
         auto server = net::createServer( &loop );
         server->on( TcpZeroServer::ID_CONNECT, [ = ]( TcpZeroSocket * sock ) {
             console.log( "connected" );
             sock->on( TcpZeroSocket::ID_DATA, [ = ]( const NetworkBuffer * buff ) {
                 console.log( "read '{}'", buff->c_str() );
-				if( buff->c_str()[0] == 'Q' ) {
-					sock->close();
-					console.log( "Exit" );
-				} else {
-					std::string s( "\r\nyou wrote: '" );
-					s += buff->c_str();
-					s += "'\r\n";
-					sock->write( s.c_str(), s.length() );
-				}
+                if( buff->c_str()[0] == 'Q' ) {
+                    sock->close();
+                    console.log( "Exit" );
+                } else {
+                    std::string s( "\r\nyou wrote: '" );
+                    s += buff->c_str();
+                    s += "'\r\n";
+                    sock->write( s.c_str(), s.length() );
+                }
             } );
             sock->on( TcpZeroSocket::ID_CLOSED, [ = ]() {
                 console.log( "closed" );
@@ -329,6 +337,14 @@ class ZeroServer0 {
 class NodeServer0 : public Node {
   public:
     void run() override {
+        Future< TcpSocket > futureClient = net::connect( this, "127.0.0.1", 8081 );
+        futureClient.then( [ = ]( const std::exception * ex ) {
+            if( ex ) {
+                console.log( "Client Error" );
+                return;
+            }
+            console.log( "Client Connected" );
+        } );
         auto server = net::createServer( this );
         auto futureSock = server->listen( 8080 );
         futureSock.onEach( [ = ]( const std::exception * err ) {
@@ -340,13 +356,13 @@ class NodeServer0 : public Node {
                 } else {
                     string s = futureData.value().toString();
                     console.log( "Future Data {}", s.c_str() );
-					if( s[0] == 'Q' ) {
-						futureSock.value().close();
-						console.log( "Exit" );
-					} else {
-						s = "You wrote: " + s + "\r\n";
-						futureSock.value().write( s.c_str(), s.length() );
-					}
+                    if( s[0] == 'Q' ) {
+                        futureSock.value().close();
+                        console.log( "Exit" );
+                    } else {
+                        s = "You wrote: " + s + "\r\n";
+                        futureSock.value().write( s.c_str(), s.length() );
+                    }
                 }
             } );
         } );
@@ -382,7 +398,7 @@ class NodeServer1 : public Node {
 
 void testServerZero() {
     LoopContainer loop;
-    auto p = new ZeroServer1;
+    auto p = new ZeroServer0;
     p->run( loop );
     loop.run();
     delete p;
@@ -400,7 +416,7 @@ void testServer() {
 
 int main() {
     try {
-        //		testServerZero();
+        //testServerZero();
         testServer();
     } catch( const std::exception& e ) {
         console.error( "std::exception '{}'", e.what() );

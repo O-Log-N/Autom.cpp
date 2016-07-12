@@ -36,7 +36,6 @@ autom::Future< Timer > autom::startTimeout( Node* node, unsigned secDelay ) {
     startTimeout( node->parentLoop, [node, id]() {
         NodeQTimer item;
         item.id = id;
-        item.node = node;
         node->infraProcessTimer( item );
     }, secDelay );
     return future;
@@ -48,7 +47,6 @@ MultiFuture< Timer > autom::setInterval( Node* node, unsigned secRepeat ) {
     setInterval( node->parentLoop, [node, id]() {
         NodeQTimer item;
         item.id = id;
-        item.node = node;
         node->infraProcessTimer( item );
     }, secRepeat );
 

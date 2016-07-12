@@ -29,13 +29,12 @@ MultiFuture< Buffer > TcpSocket::read() const {
     zero->on( TcpZeroSocket::ID_DATA, [id, nd]( const NetworkBuffer * b ) {
         NodeQBuffer item;
         item.id = id;
-        item.node = nd;
         item.b = *b;
         nd->infraProcessTcpRead( item );
     } );
     zero->on( TcpZeroSocket::ID_CLOSED, [id, nd]() {
-        NodeQBuffer item;
-        item.closeId = id;
+        NodeQClosed item;
+        item.id = id;
         nd->infraProcessTcpClosed( item );
     } );
     zero->read();
@@ -47,19 +46,18 @@ void TcpSocket::write( const void* buff, size_t sz ) const {
 }
 
 void TcpSocket::close() const {
-	zero->close();
+    zero->close();
 }
 
 MultiFuture< TcpSocket > TcpServer::listen( int port ) {
-	if( !zero.listen( port ) )
-		throw "ERROR";
-	MultiFuture< TcpSocket > future( node );
+    if( !zero.listen( port ) )
+        throw "ERROR";
+    MultiFuture< TcpSocket > future( node );
     auto id = future.infraGetId();
     auto nd = node;
     zero.on( ID_CONNECT, [id, nd]( TcpZeroSocket * zs ) {
         NodeQAccept item;
         item.id = id;
-        item.node = nd;
         item.sock = new TcpSocket;
         item.sock->zero = zs;
         item.sock->node = nd;
@@ -69,12 +67,25 @@ MultiFuture< TcpSocket > TcpServer::listen( int port ) {
     return future;
 }
 
-TcpSocket* net::connect( Node* node, int port ) {
-	auto sock = new TcpSocket;
-	sock->zero = connect( node->parentLoop, port );
-//	sock->zero->on( TcpZeroSocket::ID_CONNECT, []() {
-//	} );
-	return sock;
+Future< TcpSocket > net::connect( Node* node, const char* addr, int port ) {
+    auto sock = new TcpSocket;
+    sock->zero = net::connect( node->parentLoop, addr, port );
+    sock->node = node;
+
+    Future< TcpSocket > future( node );
+    auto id = future.infraGetId();
+    sock->zero->on( TcpZeroSocket::ID_CONNECT, [id, node, sock]() {
+        NodeQConnect item;
+        item.id = id;
+        item.sock = sock;
+        node->infraProcessTcpConnect( item );
+    } );
+    sock->zero->on( TcpZeroSocket::ID_ERROR, [id, node]() {
+        NodeQClosed item;
+        item.id = id;
+        node->infraProcessTcpClosed( item );
+    } );
+    return future;
 }
 
 std::exception* Buffer::fromNetwork( const NetworkBuffer& b ) {
