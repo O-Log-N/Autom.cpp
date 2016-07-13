@@ -299,14 +299,6 @@ public:
 class ZeroServer0 {
   public:
     void run( LoopContainer& loop ) {
-        auto client = net::connect( &loop, "127.0.0.1", 8081 );
-        client->on( TcpZeroSocket::ID_CONNECT, [ = ]() {
-            console.log( "client connected" );
-        } );
-        client->on( TcpZeroSocket::ID_ERROR, [ = ]() {
-            console.log( "client error" );
-        } );
-
         auto server = net::createServer( &loop );
         server->on( TcpZeroServer::ID_CONNECT, [ = ]( TcpZeroSocket * sock ) {
             console.log( "connected" );
@@ -337,14 +329,6 @@ class ZeroServer0 {
 class NodeServer0 : public Node {
   public:
     void run() override {
-        Future< TcpSocket > futureClient = net::connect( this, "127.0.0.1", 8081 );
-        futureClient.then( [ = ]( const std::exception * ex ) {
-            if( ex ) {
-                console.log( "Client Error" );
-                return;
-            }
-            console.log( "Client Connected" );
-        } );
         auto server = net::createServer( this );
         auto futureSock = server->listen( 8080 );
         futureSock.onEach( [ = ]( const std::exception * err ) {
@@ -396,7 +380,27 @@ class NodeServer1 : public Node {
     }
 };
 
-void testServerZero() {
+class NodeClient0 : public Node {
+  public:
+    void run() override {
+        Future< TcpSocket > futureClient = net::connect( this, "127.0.0.1", 8080 );
+        futureClient.then( [ = ]( const std::exception * ex ) {
+            if( ex ) {
+                console.log( "Client Error" );
+                return;
+            }
+            console.log( "Client Connected" );
+            for( int i = 0; i < 1000; i++ ) {
+                std::string s( "Hello " );
+                s += '0' + i % 10;
+                futureClient.value().write( s.c_str(), s.length() );
+            }
+            futureClient.value().close();
+        } );
+    }
+};
+
+static void testServerZero() {
     LoopContainer loop;
     auto p = new ZeroServer0;
     p->run( loop );
@@ -404,7 +408,7 @@ void testServerZero() {
     delete p;
 }
 
-void testServer() {
+static void testServer() {
     LoopContainer lc;
     InfraNodeContainer container( &lc );
     Node* p = new NodeServer0;
@@ -414,10 +418,22 @@ void testServer() {
     delete p;
 }
 
-int main() {
+static void testClient() {
+    LoopContainer lc;
+    InfraNodeContainer container( &lc );
+    Node* p = new NodeClient0;
+    container.addNode( p );
+    container.run();
+    container.removeNode( p );
+    delete p;
+}
+
+int main( int argc, const char** argv ) {
     try {
-        //testServerZero();
-        testServer();
+        if( argc > 1 && 0 == strcmp( argv[1], "-c" ) )
+            testClient();
+        else
+            testServer();
     } catch( const std::exception& e ) {
         console.error( "std::exception '{}'", e.what() );
         return 1;

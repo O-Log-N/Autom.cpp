@@ -57,10 +57,11 @@ MultiFuture< TcpSocket > TcpServer::listen( int port ) {
     auto nd = node;
     zero.on( ID_CONNECT, [id, nd]( TcpZeroSocket * zs ) {
         NodeQAccept item;
-        item.id = id;
-        item.sock = new TcpSocket;
-        item.sock->zero = zs;
-        item.sock->node = nd;
+		TcpSocket s;
+		s.zero = zs;
+		s.node = nd;
+		item.id = id;
+        item.sock = &s;
         nd->infraProcessTcpAccept( item );
     } );
 
@@ -89,11 +90,6 @@ Future< TcpSocket > net::connect( Node* node, const char* addr, int port ) {
 }
 
 std::exception* Buffer::fromNetwork( const NetworkBuffer& b ) {
-    static int cnt = 0;
-    if( ++cnt % 5 == 0 ) {
-//        return new std::exception();
-    }
-
     s = b;
     return nullptr;
 }

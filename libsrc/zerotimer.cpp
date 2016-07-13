@@ -13,6 +13,7 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 *******************************************************************************/
 #include "../include/aassert.h"
 #include "../include/zerotimer.h"
+#include "../libsrc/infra/loopcontainer.h"
 
 namespace autom {
 

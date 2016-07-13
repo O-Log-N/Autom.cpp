@@ -15,9 +15,10 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #define ZEROTIMER_H
 
 #include <functional>
-#include "../libsrc/infra/loopcontainer.h"
 
 namespace autom {
+
+class LoopContainer;
 
 void setInterval( LoopContainer*, std::function< void( void ) >, unsigned secRepeat );
 void startTimeout( LoopContainer*, std::function< void( void ) >, unsigned secDelay );

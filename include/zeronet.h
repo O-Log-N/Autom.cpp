@@ -19,14 +19,20 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #include "../3rdparty/libuv/include/uv.h"
 #include "aassert.h"
 #include "abuffer.h"
-#include "../libsrc/infra/loopcontainer.h"
 
 namespace autom {
+
+class LoopContainer;
 
 class TcpZeroSocket {
   public:
     enum EventId { ID_ERROR = 1, ID_CONNECT, ID_DATA, ID_DRAIN, ID_CLOSED };
     uv_stream_t* stream;
+
+    std::function< void( void ) > onConnected;
+    std::function< void( const NetworkBuffer* ) > onRead;
+    std::function< void( void ) > onClosed;
+    std::function< void( void ) > onError;
 
     TcpZeroSocket() {
         onConnected = []() {};
@@ -34,11 +40,6 @@ class TcpZeroSocket {
         onClosed = []() {};
         onError = []() {};
     }
-
-    std::function< void( void ) > onConnected;
-    std::function< void( const NetworkBuffer* ) > onRead;
-    std::function< void( void ) > onClosed;
-    std::function< void( void ) > onError;
 
     void read() const;
     void write( const void* buff, size_t sz ) const;

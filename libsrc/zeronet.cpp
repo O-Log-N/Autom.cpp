@@ -52,6 +52,7 @@ static void readCb( uv_stream_t* stream, ssize_t nread, const uv_buf_t* buff ) {
         uv_close( ( uv_handle_t* )stream, tcpCloseCb );
         delete item->sock;
         delete item;
+        stream->data = nullptr;
     } else {
         item->b.assign( buff->base, nread );
         item->sock->onRead( &item->b );
