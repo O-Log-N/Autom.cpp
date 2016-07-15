@@ -288,7 +288,7 @@ class CCode {
 
 }
 
-#define CCODE CCode code([=]()
+#define CCODE CCode code([=](){
 #define ENDCCODE });
 #define TTRY },CCode::ttry([=]()
 //NB: no starting } for CCATCH, as it ALWAYS comes after '}'
