@@ -53,6 +53,15 @@ class InfraFutureBase {
         refCount--;
         INFRATRACE4( "    cleanup {} cnt {}", ( void* )this, refCount );
     }
+    void cleanupMulti() {
+        if( multi ) {
+            fn = nullptr;
+            multi = false;
+            INFRATRACE4( "    multi cleanup {} cnt {}", ( void* )this, refCount );
+        } else {
+            cleanup();
+        }
+    }
     virtual void debugDump() const = 0;
 };
 

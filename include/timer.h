@@ -23,7 +23,7 @@ class Timer {
 };
 
 Future< Timer > startTimeout( Node* node, unsigned secDelay );
-//void startTimeout( const Future< Timer >&, Node* node, unsigned secDelay );
+void startTimeout( const Future< Timer >&, Node* node, unsigned secDelay );
 MultiFuture< Timer > setInterval( Node* node, unsigned secRepeat );
 
 }

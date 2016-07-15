@@ -18,18 +18,16 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #include "infra/nodecontainer.h"
 
 using namespace autom;
-/*
-void autom::startTimeout( const Future< Timer >& future, Node* node, unsigned secDelay ) {
-    NodeQTimer* item = new NodeQTimer;
-    item->id = future.infraGetId();
-    item->node = node;
 
-    uv_timer_t* timer = new uv_timer_t;
-    uv_timer_init( node->parentLoop->infraLoop(), timer );
-    timer->data = item;
-    uv_timer_start( timer, timerCb, secDelay * 1000, 0 );
+void autom::startTimeout( const Future< Timer >& future, Node* node, unsigned secDelay ) {
+    FutureId id = future.infraGetId();
+    startTimeout( node->parentLoop, [node, id]() {
+        NodeQTimer item;
+        item.id = id;
+        node->infraProcessTimer( item );
+    }, secDelay );
 }
-*/
+
 autom::Future< Timer > autom::startTimeout( Node* node, unsigned secDelay ) {
     Future< Timer > future( node );
     FutureId id = future.infraGetId();

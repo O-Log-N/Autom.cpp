@@ -49,8 +49,7 @@ void Node::infraProcessTcpRead( const NodeQBuffer& item ) {
     if( it != futureMap.end() ) {
         auto f = static_cast<InfraFuture< Buffer >*>( it->second.get() );
         std::exception* ex = f->infraGetData().fromNetwork( item.b );
-        if( ! ex )
-            f->setDataReady();
+        f->setDataReady();
         it->second->fn( ex );
         delete ex;
         it->second->cleanup();
@@ -63,7 +62,7 @@ void Node::infraProcessTcpClosed( const NodeQClosed& item ) {
     if( it != futureMap.end() ) {
         std::exception ex;
         it->second->fn( &ex );
-        it->second->cleanup();
+        it->second->cleanupMulti();
         futureCleanup();
     }
 }
