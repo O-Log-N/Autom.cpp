@@ -234,66 +234,67 @@ class NodeServer5 : public Node {
         Future<Timer> data( this ), data2( this ), data3( this ), data4( this ), data5( this );
         Future<bool> cond( this );
 
-        CCODE
-        TTRY {
-            startTimeout( data, this, 5 );
-            AWAIT( data );
-            infraConsole.log( "READ1: file {}---{}", fname.c_str(), "data" );
-            cond.setValue( true );
-            WWHILE( cond ) {
-                static int cnt = 0;
-                cnt++;
-                infraConsole.log( "wwhile loop" );
-                if( cnt > 10 )
-                    cond.setValue( false );
-            }
-            ENDWWHILE
-            IIF( cond ) {
-                startTimeout( data2, this, 6 );
-                infraConsole.log( "Positive branch 1" );
-                AWAIT( data2 );
-                infraConsole.log( "READ2: {} : {}", "data", "data2" );
-                cond.setValue( false );
+        CCODE {
+            TTRY {
+                startTimeout( data, this, 5 );
+                AWAIT( data );
+                infraConsole.log( "READ1: file {}---{}", fname.c_str(), "data" );
+                cond.setValue( true );
+                WWHILE( cond ) {
+                    static int cnt = 0;
+                    cnt++;
+                    infraConsole.log( "wwhile loop" );
+                    if( cnt > 10 )
+                        cond.setValue( false );
+                }
+                ENDWWHILE
                 IIF( cond ) {
-                    infraConsole.log( "nested iif +" );
+                    startTimeout( data2, this, 6 );
+                    infraConsole.log( "Positive branch 1" );
+                    AWAIT( data2 );
+                    infraConsole.log( "READ2: {} : {}", "data", "data2" );
+                    cond.setValue( false );
+                    IIF( cond ) {
+                        infraConsole.log( "nested iif +" );
+                    }
+                    EELSE {
+                        infraConsole.log( "nested iif -" );
+                    }
+                    ENDIIF
                 }
                 EELSE {
-                    infraConsole.log( "nested iif -" );
+                    TTRY {
+                        startTimeout( data3, this, 7 );
+                        infraConsole.log( "Negative branch 2" );
+                        cond.setValue( true );
+                        AWAIT( data3 );
+                    }
+                    CCATCH( const std::exception & x ) {
+                        infraConsole.log( "nested catch" );
+                    }
+                    ENDTTRY
+                    infraConsole.log( "READ3" );
+                }
+                ENDIIF
+                IIF( cond ) {
+                    startTimeout( data4, this, 6 );
+                    infraConsole.log( "Positive branch 3" );
+                    AWAIT( data4 );
+                    infraConsole.log( "READ4" );
+                }
+                EELSE {
+                    startTimeout( data5, this, 7 );
+                    infraConsole.log( "Negative branch 3" );
+                    AWAIT( data5 );
+                    infraConsole.log( "READ5" );
                 }
                 ENDIIF
             }
-            EELSE {
-                TTRY {
-                    startTimeout( data3, this, 7 );
-                    infraConsole.log( "Negative branch 2" );
-                    cond.setValue( true );
-                    AWAIT( data3 );
-                }
-                CCATCH( const std::exception & x ) {
-                    infraConsole.log( "nested catch" );
-                }
-                ENDTTRY
-                infraConsole.log( "READ3" );
+            CCATCH( const std::exception & x ) {
+                infraConsole.log( "oopsies: {}", x.what() );
             }
-            ENDIIF
-            IIF( cond ) {
-                startTimeout( data4, this, 6 );
-                infraConsole.log( "Positive branch 3" );
-                AWAIT( data4 );
-                infraConsole.log( "READ4" );
-            }
-            EELSE {
-                startTimeout( data5, this, 7 );
-                infraConsole.log( "Negative branch 3" );
-                AWAIT( data5 );
-                infraConsole.log( "READ5" );
-            }
-            ENDIIF
+            ENDTTRY
         }
-        CCATCH( const std::exception & x ) {
-            infraConsole.log( "oopsies: {}", x.what() );
-        }
-        ENDTTRY
         ENDCCODE
     }
 };

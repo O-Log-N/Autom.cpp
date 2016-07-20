@@ -288,8 +288,8 @@ class CCode {
 
 }
 
-#define CCODE CCode code([=](){
-#define ENDCCODE });
+#define CCODE CCode code([=]()
+#define ENDCCODE );
 #define TTRY },CCode::ttry([=]()
 //NB: no starting } for CCATCH, as it ALWAYS comes after '}'
 #define CCATCH(a) ).CTryStep::ccatch([=](a)
