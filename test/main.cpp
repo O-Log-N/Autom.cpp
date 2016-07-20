@@ -67,9 +67,9 @@ public:
 	void run() override {
 		int connectToPort = 7001;
 		auto server = net::createServer( this );
-		auto s = server.listen( 7000 );
+		auto s = server->listen( 7000 );
 		if( !s.isOk() ) {
-			s = server.listen( 7001 );
+			s = server->listen( 7001 );
 			connectToPort = 7000;
 		}
 		s.onEach( [=]( const std::exception * ex ) {
@@ -78,16 +78,16 @@ public:
 				return;
 			}
 			infraConsole.log( "Connection accepted" );
-			auto fromNet = s.value().read( this );
+			auto fromNet = s.value().read();
 			fromNet.onEach( [=]( const std::exception * ex ) {
 				if( ex ) {
-					s.value().disconnect( this );
+					s.value().disconnect();
 					infraConsole.log( "Read error '{}'", ex->what() );
 					return;
 				}
 				INFRATRACE0( "Received '{}'", fromNet.value().toString() );
 			} );
-			auto end = s.value().closed( this );
+			auto end = s.value().closed();
 			end.then( [=]( const std::exception * ex ) {
 				INFRATRACE0( "Disconnected" );
 			} );
@@ -111,9 +111,9 @@ public:
 	void run() override {
 		int connectToPort = 7001;
 		auto server = net::createServer( this );
-		auto s = server.listen( 7000 );
+		auto s = server->listen( 7000 );
 		if( !s.isOk() ) {
-			s = server.listen( 7001 );
+			s = server->listen( 7001 );
 			connectToPort = 7000;
 		}
 		s.onEach( [=]( const std::exception * ex ) {
@@ -142,91 +142,91 @@ public:
 		} );
 	}
 };
-
+*/
 class NodeServer3 : public Node {
-public:
-	void run() override {
-		std::string fname( "path1" );
-		Future<Timer> data1( this ), data2( this ), data3( this );
-		CCode code( CCode::ttry(
-			[=]() {
-			startTimeout( data1, this, 15 );
-			startTimeout( data3, this, 5 );
-			infraConsole.log( "timers 1 and 3 started" );
-		},
-			CCode::waitFor( data1 ),
-			[=]() {
-			infraConsole.log( "Timer1: file {}", fname.c_str() );
-			startTimeout( data2, this, 6 );
-			infraConsole.log( "timer 2 started" );
-		},
-			[=]() {
-			infraConsole.log( "After Timer1" );
-		},
-			CCode::waitFor( data2 ),
-			[=]() {
-			infraConsole.log( "TIMER2:" );
-		},
-			[=]() {
-			infraConsole.log( "After Timer2" );
-		},
-			CCode::waitFor( data3 ),
-			[=]() {
-			infraConsole.log( "TIMER3" );
-		},
-			[=]() {
-			infraConsole.log( "After Timer3" );
-		},
-			[=]() {
-			infraConsole.log( "Last step" );
-		}
-			).ccatch( [=]( const std::exception & x ) {
-			infraConsole.log( "oopsies: {}", x.what() );
-		} ) );//ccatch+code
-	}
+  public:
+    void run() override {
+        std::string fname( "path1" );
+        Future<Timer> data1( this ), data2( this ), data3( this );
+        CCode code( CCode::ttry(
+        [ = ]() {
+            startTimeout( data1, this, 15 );
+            startTimeout( data3, this, 5 );
+            infraConsole.log( "timers 1 and 3 started" );
+        },
+        CCode::waitFor( data1 ),
+        [ = ]() {
+            infraConsole.log( "Timer1: file {}", fname.c_str() );
+            startTimeout( data2, this, 6 );
+            infraConsole.log( "timer 2 started" );
+        },
+        [ = ]() {
+            infraConsole.log( "After Timer1" );
+        },
+        CCode::waitFor( data2 ),
+        [ = ]() {
+            infraConsole.log( "TIMER2:" );
+        },
+        [ = ]() {
+            infraConsole.log( "After Timer2" );
+        },
+        CCode::waitFor( data3 ),
+        [ = ]() {
+            infraConsole.log( "TIMER3" );
+        },
+        [ = ]() {
+            infraConsole.log( "After Timer3" );
+        },
+        [ = ]() {
+            infraConsole.log( "Last step" );
+        }
+        ).ccatch( [ = ]( const std::exception & x ) {
+            infraConsole.log( "oopsies: {}", x.what() );
+        } ) );//ccatch+code
+    }
 };
 
 class NodeServer4 : public Node {
-public:
-	void run() override {
-		std::string fname( "path1" );
-		Future<Timer> data( this ), data2( this ), data3( this );
-		Future<bool> cond( this );
-		CCode code( CCode::ttry(
-			[=]() {
-			startTimeout( data, this, 5 );
-		},
-			CCode::waitFor( data ),
-			[=]() {
-			infraConsole.log( "READ1: file {}---{}", fname.c_str(), "data" );
-			cond.setValue( false );
-		},
-			CCode::iif( cond,
-				[=]() {
-			startTimeout( data2, this, 6 );
-			infraConsole.log( "Positive branch" );
-		},
-				CCode::waitFor( data2 ),
-			[=]() {
-			infraConsole.log( "READ2: {} : {}", "data", "data2" );
-		} ).eelse(
-			[=]() {
-			startTimeout( data3, this, 7 );
-			infraConsole.log( "Negative branch" );
-		},
-			CCode::waitFor( data3 ),
-			[=]() {
-			infraConsole.log( "READ3: {} : {}", "data", "data3" );
-		} ),
-			[=]() {
-			infraConsole.log( "Invariant after iif" );
-		}
-			).ccatch( [=]( const std::exception & x ) {
-			infraConsole.log( "oopsies: {}", x.what() );
-		} ) );//ccatch+code
-	}
+  public:
+    void run() override {
+        std::string fname( "path1" );
+        Future<Timer> data( this ), data2( this ), data3( this );
+        Future<bool> cond( this );
+        CCode code( CCode::ttry(
+        [ = ]() {
+            startTimeout( data, this, 5 );
+        },
+        CCode::waitFor( data ),
+        [ = ]() {
+            infraConsole.log( "READ1: file {}---{}", fname.c_str(), "data" );
+            cond.setValue( false );
+        },
+        CCode::iif( cond,
+        [ = ]() {
+            startTimeout( data2, this, 6 );
+            infraConsole.log( "Positive branch" );
+        },
+        CCode::waitFor( data2 ),
+        [ = ]() {
+            infraConsole.log( "READ2: {} : {}", "data", "data2" );
+        } ).eelse(
+        [ = ]() {
+            startTimeout( data3, this, 7 );
+            infraConsole.log( "Negative branch" );
+        },
+        CCode::waitFor( data3 ),
+        [ = ]() {
+            infraConsole.log( "READ3: {} : {}", "data", "data3" );
+        } ),
+        [ = ]() {
+            infraConsole.log( "Invariant after iif" );
+        }
+        ).ccatch( [ = ]( const std::exception & x ) {
+            infraConsole.log( "oopsies: {}", x.what() );
+        } ) );//ccatch+code
+    }
 };
-*/
+
 class NodeServer5 : public Node {
   public:
     void run() override {
@@ -394,13 +394,15 @@ class NodeClient0 : public Node {
                 return;
             }
             console.log( "Client Connected" );
+            std::this_thread::sleep_for( std::chrono::seconds( 30 ) );
             for( int i = 0; i < 1000; i++ ) {
                 std::string s( "Hello " );
                 s += '0' + i % 10;
                 futureClient.value().write( s.c_str(), s.length() );
+                std::this_thread::sleep_for( std::chrono::milliseconds( 10 ) );
             }
             futureClient.value().close();
-            std::this_thread::sleep_for( std::chrono::milliseconds( 50 ) );
+            console.log( "Client Closed" );
         } );
     }
 };
@@ -416,7 +418,7 @@ static void testServerZero() {
 static void testServer() {
     LoopContainer lc;
     InfraNodeContainer container( &lc );
-    Node* p = new NodeServer5;
+    Node* p = new NodeServer0;
     container.addNode( p );
     container.run();
     container.removeNode( p );
@@ -426,11 +428,13 @@ static void testServer() {
 static void testClient() {
     LoopContainer lc;
     InfraNodeContainer container( &lc );
-    Node* p = new NodeClient0;
-    container.addNode( p );
-    container.run();
-    container.removeNode( p );
-    delete p;
+    for( int i = 0; i < 11; i++ ) {
+        Node* p = new NodeClient0;
+        container.addNode( p );
+        container.run();
+        container.removeNode( p );
+        delete p;
+    }
 }
 
 int main( int argc, const char** argv ) {
