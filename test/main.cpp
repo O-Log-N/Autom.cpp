@@ -384,6 +384,7 @@ class NodeServer1 : public Node {
 };
 
 #include <chrono>
+#include <thread>
 
 class NodeClient0 : public Node {
   public:
