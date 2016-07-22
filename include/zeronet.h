@@ -16,9 +16,9 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #define ZERONET_H
 
 #include <functional>
-#include "../3rdparty/libuv/include/uv.h"
 #include "aassert.h"
 #include "abuffer.h"
+#include "../3rdparty/libuv/include/uv.h"
 
 namespace autom {
 
@@ -27,7 +27,7 @@ class LoopContainer;
 class TcpZeroSocket {
   public:
     enum EventId { ID_ERROR = 1, ID_CONNECT, ID_DATA, ID_DRAIN, ID_CLOSED };
-    uv_stream_t* stream;
+	uv_stream_t* stream;
 
     std::function< void( void ) > onConnected;
     std::function< void( const NetworkBuffer* ) > onRead;
@@ -64,7 +64,7 @@ class TcpZeroSocket {
 };
 
 class TcpZeroServer {
-    uv_tcp_t* handle;
+	uv_tcp_t* listenerTcp;
     LoopContainer* loop;
 
   public:

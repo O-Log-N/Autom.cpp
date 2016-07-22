@@ -15,8 +15,19 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #include "../include/zeronet.h"
 #include "infra/loopcontainer.h"
 
-
 namespace autom {
+
+static inline uv_stream_t* uv_tcp_to_stream( uv_tcp_t* t ) {
+    return reinterpret_cast<uv_stream_t*>( t );
+}
+
+static inline uv_handle_t* uv_tcp_to_handle( uv_tcp_t* t ) {
+    return reinterpret_cast<uv_handle_t*>( t );
+}
+
+static inline uv_handle_t* uv_stream_to_handle( uv_stream_t* t ) {
+    return reinterpret_cast<uv_handle_t*>( t );
+}
 
 struct ZeroQBuffer {
     NetworkBuffer b;
@@ -37,7 +48,7 @@ TcpZeroServer* net::createServer( LoopContainer* loop ) {
 }
 
 static void tcpCloseCb( uv_handle_t* handle ) {
-    delete ( uv_tcp_t* )handle;
+    delete reinterpret_cast<uv_tcp_t*>( handle );
 }
 
 static void allocCb( uv_handle_t* handle, size_t size, uv_buf_t* buff ) {
@@ -49,7 +60,7 @@ static void readCb( uv_stream_t* stream, ssize_t nread, const uv_buf_t* buff ) {
     auto item = static_cast<ZeroQBuffer*>( stream->data );
     if( nread < 0 ) {
         item->sock->onClosed();
-        uv_close( ( uv_handle_t* )stream, tcpCloseCb );
+        uv_close( uv_stream_to_handle( stream ), tcpCloseCb );
         delete item->sock;
         delete item;
         stream->data = nullptr;
@@ -78,41 +89,41 @@ void TcpZeroSocket::write( const void* buff, size_t sz ) const {
 }
 
 void TcpZeroSocket::close() const {
-    uv_close( ( uv_handle_t * )stream, tcpCloseCb );
+    uv_close( uv_stream_to_handle( stream ), tcpCloseCb );
 }
 
 static void acceptCb( uv_stream_t* server, int status ) {
-    uv_tcp_t* serverConn = new uv_tcp_t;
+    auto serverConn = new uv_tcp_t;
     uv_tcp_init( server->loop, serverConn );
-    if( uv_accept( server, ( uv_stream_t * )serverConn ) == 0 ) {
+    if( uv_accept( server, uv_tcp_to_stream( serverConn ) ) == 0 ) {
         AASSERT4( server->data );
         auto item = static_cast<ZeroQAccept*>( server->data );
         item->sock = new TcpZeroSocket;
-        item->sock->stream = ( uv_stream_t * )serverConn;
+        item->sock->stream = uv_tcp_to_stream( serverConn );
         item->server->onConnect( item->sock );
         item->sock->onConnected();
     } else {
-        uv_close( ( uv_handle_t * )serverConn, tcpCloseCb );
+        uv_close( uv_tcp_to_handle( serverConn ), tcpCloseCb );
         auto item = static_cast<ZeroQAccept*>( server->data );
         item->server->onError();
     }
 }
 
 bool TcpZeroServer::listen( int port ) {
-    handle = new uv_tcp_t;
-    uv_tcp_init( loop->infraLoop(), handle );
+    listenerTcp = new uv_tcp_t;
+    uv_tcp_init( loop->infraLoop(), listenerTcp );
 
     sockaddr_in addr;
     uv_ip4_addr( "127.0.0.1", port, &addr );
-    if( 0 == uv_tcp_bind( handle, ( sockaddr* )&addr, 0 ) ) {
-        if( 0 == uv_listen( ( uv_stream_t* )handle, 1024, acceptCb ) ) {
+    if( 0 == uv_tcp_bind( listenerTcp, ( sockaddr* )&addr, 0 ) ) {
+        if( 0 == uv_listen( uv_tcp_to_stream( listenerTcp ), 1024, acceptCb ) ) {
             ZeroQAccept* item = new ZeroQAccept;
             item->server = this;
-            handle->data = item;
+			listenerTcp->data = item;
             return true;
         }
     }
-    uv_close( ( uv_handle_t* )handle, tcpCloseCb );
+    uv_close( uv_tcp_to_handle( listenerTcp ), tcpCloseCb );
     return false;
 }
 
@@ -123,14 +134,14 @@ static void tcpConnectedCb( uv_connect_t* req, int status ) {
         item->sock->onConnected();
     } else {
         item->sock->onError();
-        uv_close( ( uv_handle_t* )req->handle, tcpCloseCb );
+        uv_close( uv_stream_to_handle( req->handle ), tcpCloseCb );
     }
     delete item;
     delete req;
 }
 
 TcpZeroSocket* net::connect( LoopContainer* loop, const char* addr, int port ) {
-    uv_tcp_t* client = new uv_tcp_t;
+    auto client = new uv_tcp_t;
     uv_tcp_init( loop->infraLoop(), client );
     sockaddr_in ip;
     uv_ip4_addr( addr, port, &ip );
@@ -145,3 +156,4 @@ TcpZeroSocket* net::connect( LoopContainer* loop, const char* addr, int port ) {
 }
 
 }
+
