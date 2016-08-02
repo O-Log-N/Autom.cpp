@@ -23,7 +23,7 @@ namespace autom {
 
 class TcpSocket {
   public:
-    TcpZeroSocket* zero;
+    TcpZeroSocket zero;
     Node* node;
 
     void close() const;

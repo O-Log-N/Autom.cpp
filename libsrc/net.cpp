@@ -26,27 +26,27 @@ MultiFuture< Buffer > TcpSocket::read() const {
     MultiFuture< Buffer > future( node );
     auto id = future.infraGetId();
     auto nd = node;
-    zero->on( TcpZeroSocket::ID_DATA, [id, nd]( const NetworkBuffer * b ) {
+    zero.on( TcpZeroSocket::ID_DATA, [id, nd]( const NetworkBuffer * b ) {
         NodeQBuffer item;
         item.id = id;
         item.b = *b;
         nd->infraProcessTcpRead( item );
     } );
-    zero->on( TcpZeroSocket::ID_CLOSED, [id, nd]() {
+    zero.on( TcpZeroSocket::ID_CLOSED, [id, nd]() {
         NodeQClosed item;
         item.id = id;
         nd->infraProcessTcpClosed( item );
     } );
-    zero->read();
+    zero.read();
     return future;
 }
 
 void TcpSocket::write( const void* buff, size_t sz ) const {
-    zero->write( buff, sz );
+    zero.write( buff, sz );
 }
 
 void TcpSocket::close() const {
-    zero->close();
+    zero.close();
 }
 
 MultiFuture< TcpSocket > TcpServer::listen( int port ) {
@@ -55,7 +55,7 @@ MultiFuture< TcpSocket > TcpServer::listen( int port ) {
     MultiFuture< TcpSocket > future( node );
     auto id = future.infraGetId();
     auto nd = node;
-    zero.on( ID_CONNECT, [id, nd]( TcpZeroSocket * zs ) {
+    zero.on( ID_CONNECT, [id, nd]( TcpZeroSocket zs ) {
         NodeQAccept item;
         TcpSocket s;
         s.zero = zs;
@@ -75,13 +75,13 @@ Future< TcpSocket > net::connect( Node* node, const char* addr, int port ) {
 
     Future< TcpSocket > future( node );
     auto id = future.infraGetId();
-    sock->zero->on( TcpZeroSocket::ID_CONNECT, [id, node, sock]() {
+    sock->zero.on( TcpZeroSocket::ID_CONNECT, [id, node, sock]() {
         NodeQConnect item;
         item.id = id;
         item.sock = sock;
         node->infraProcessTcpConnect( item );
     } );
-    sock->zero->on( TcpZeroSocket::ID_ERROR, [id, node]() {
+    sock->zero.on( TcpZeroSocket::ID_ERROR, [id, node]() {
         NodeQClosed item;
         item.id = id;
         node->infraProcessTcpClosed( item );

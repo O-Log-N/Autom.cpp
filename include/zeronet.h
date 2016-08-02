@@ -16,91 +16,47 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #define ZERONET_H
 
 #include <functional>
-#include "aassert.h"
-#include "abuffer.h"
-#include "../3rdparty/libuv/include/uv.h"
 
 namespace autom {
 
 class LoopContainer;
+class NetworkBuffer;
+
+using Handle = size_t;
 
 class TcpZeroSocket {
   public:
     enum EventId { ID_ERROR = 1, ID_CONNECT, ID_DATA, ID_DRAIN, ID_CLOSED };
-	uv_stream_t* stream;
-
-    std::function< void( void ) > onConnected;
-    std::function< void( const NetworkBuffer* ) > onRead;
-    std::function< void( void ) > onClosed;
-    std::function< void( void ) > onError;
-
-    TcpZeroSocket() {
-        onConnected = []() {};
-        onRead = []( const NetworkBuffer* ) {};
-        onClosed = []() {};
-        onError = []() {};
-    }
+    Handle h;
 
     void read() const;
     void write( const void* buff, size_t sz ) const;
     void close() const;
 
-    void on( int eventId, std::function< void( const NetworkBuffer* ) > fn ) {
-        if( ID_DATA == eventId )
-            onRead = fn;
-        else
-            AASSERT4( false );
-    }
-    void on( int eventId, std::function< void( void ) > fn ) {
-        if( ID_CLOSED == eventId )
-            onClosed = fn;
-        else if( ID_ERROR == eventId )
-            onError = fn;
-        else if( ID_CONNECT == eventId )
-            onConnected = fn;
-        else
-            AASSERT4( false );
-    }
+    void on( int eventId, std::function< void( const NetworkBuffer* ) > fn ) const;
+    void on( int eventId, std::function< void( void ) > fn ) const;
 };
 
 class TcpZeroServer {
-	uv_tcp_t* listenerTcp;
-    LoopContainer* loop;
-
   public:
     enum EventId { ID_ERROR = 1, ID_CONNECT = 2, };
+    Handle h;
 
-    std::function< void( TcpZeroSocket* ) > onConnect;
-    std::function< void( void ) > onError;
+    TcpZeroServer( LoopContainer* );
 
-    explicit TcpZeroServer( LoopContainer* loop_ ) : loop( loop_ ) {
-        onConnect = []( TcpZeroSocket* ) {};
-        onError = []() {};
-    }
-    void on( int eventId, std::function< void( TcpZeroSocket* ) > fn ) {
-        if( TcpZeroServer::ID_CONNECT == eventId )
-            onConnect = fn;
-        else
-            AASSERT4( 0 );
-    }
-    void on( int eventId, std::function< void( void ) > fn ) {
-        if( TcpZeroServer::ID_ERROR == eventId )
-            onError = fn;
-        else
-            AASSERT4( 0 );
-    }
     bool listen( int port );
+
+    void on( int eventId, std::function< void( TcpZeroSocket ) > fn );
+    void on( int eventId, std::function< void( void ) > fn );
 };
 
 namespace net {
 
-TcpZeroServer* createServer( LoopContainer* loop );
-TcpZeroSocket* connect( LoopContainer* loop, const char* addr, int port );
+TcpZeroServer createServer( LoopContainer* loop );
+TcpZeroSocket connect( LoopContainer* loop, const char* addr, int port );
 
 }
 
 }
 
 #endif
-
-

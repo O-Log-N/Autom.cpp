@@ -20,7 +20,7 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 
 namespace autom {
 
-using NetworkBuffer = std::string;
+class NetworkBuffer : public std::string {};
 
 class Buffer {
     std::string s;

@@ -303,29 +303,29 @@ class ZeroServer0 {
   public:
     void run( LoopContainer& loop ) {
         auto server = net::createServer( &loop );
-        server->on( TcpZeroServer::ID_CONNECT, [ = ]( TcpZeroSocket * sock ) {
+        server.on( TcpZeroServer::ID_CONNECT, [ = ]( TcpZeroSocket sock ) {
             console.log( "connected" );
-            sock->on( TcpZeroSocket::ID_DATA, [ = ]( const NetworkBuffer * buff ) {
+            sock.on( TcpZeroSocket::ID_DATA, [ = ]( const NetworkBuffer * buff ) {
                 console.log( "read '{}'", buff->c_str() );
                 if( buff->c_str()[0] == 'Q' ) {
-                    sock->close();
+                    sock.close();
                     console.log( "Exit" );
                 } else {
                     std::string s( "\r\nyou wrote: '" );
                     s += buff->c_str();
                     s += "'\r\n";
-                    sock->write( s.c_str(), s.length() );
+                    sock.write( s.c_str(), s.length() );
                 }
             } );
-            sock->on( TcpZeroSocket::ID_CLOSED, [ = ]() {
+            sock.on( TcpZeroSocket::ID_CLOSED, [ = ]() {
                 console.log( "closed" );
             } );
-            sock->read();
+            sock.read();
         } );
-        server->on( TcpZeroServer::ID_ERROR, [ = ]() {
+        server.on( TcpZeroServer::ID_ERROR, [ = ]() {
             console.log( "server error" );
         } );
-        server->listen( 8080 );
+        server.listen( 8080 );
     }
 };
 
